@@ -33,7 +33,6 @@ defmt-error = []
 cortex-m = "0.6.4"
 cortex-m-rt = "0.6.13"
 cortex-m-semihosting = "0.3.7"
-panic-abort = "0.3.2"
 nb = "1.0.0"
 paste = "1.0.4"
 static_assertions = "1.1.0"
