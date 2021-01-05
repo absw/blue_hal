@@ -28,5 +28,6 @@ pub mod utilities {
     mod macros;
 }
 
+pub use paste;
 pub mod hal;
 pub mod drivers;
