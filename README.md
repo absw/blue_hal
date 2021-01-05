@@ -1,3 +1,3 @@
 # blue_hal
 
-Bluefruit-grown Rust HAL
+Bluefruit-grown Rust HAL.
