@@ -1,0 +1,10 @@
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tdefmt.x",
+]
+
+[alias]
+b = "build --release --target thumbv7em-none-eabihf"
+sz = "size --release --target thumbv7em-none-eabihf"
+d = "doc --release --target thumbv7em-none-eabihf"
+dop = "doc --release --target thumbv7em-none-eabihf --open"
