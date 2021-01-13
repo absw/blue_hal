@@ -1,63 +1,52 @@
 //! Quadspi driver for the stm32f412.
 
 use crate::{
-    drivers::stm32f4::gpio::*,
     hal::qspi,
     stm32pac::{QUADSPI as QuadSpiPeripheral, RCC},
 };
 use core::marker::PhantomData;
 use nb::block;
 
-mod private {
-    #[doc(hidden)]
-    pub trait Sealed {}
-}
-
 /// Sealed trait for all QSPI capable pins.
-pub unsafe trait ClkPin: private::Sealed {}
-pub unsafe trait Bk1CsPin: private::Sealed {}
-pub unsafe trait Bk2CsPin: private::Sealed {}
-pub unsafe trait Bk1Io0Pin: private::Sealed {}
-pub unsafe trait Bk1Io1Pin: private::Sealed {}
-pub unsafe trait Bk1Io2Pin: private::Sealed {}
-pub unsafe trait Bk1Io3Pin: private::Sealed {}
-pub unsafe trait Bk2Io0Pin: private::Sealed {}
-pub unsafe trait Bk2Io1Pin: private::Sealed {}
-pub unsafe trait Bk2Io2Pin: private::Sealed {}
-pub unsafe trait Bk2Io3Pin: private::Sealed {}
+pub unsafe trait ClkPin {}
+pub unsafe trait Bk1CsPin {}
+pub unsafe trait Bk2CsPin {}
+pub unsafe trait Bk1Io0Pin {}
+pub unsafe trait Bk1Io1Pin {}
+pub unsafe trait Bk1Io2Pin {}
+pub unsafe trait Bk1Io3Pin {}
+pub unsafe trait Bk2Io0Pin {}
+pub unsafe trait Bk2Io1Pin {}
+pub unsafe trait Bk2Io2Pin {}
+pub unsafe trait Bk2Io3Pin {}
 
-#[allow(unused)]
-macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
-    $(
-        unsafe impl $function for $pin {}
-        impl private::Sealed for $pin {}
-    )+
+#[macro_export(local_inner_macros)]
+macro_rules! enable_qspi { () => {
+    // There is no consistent alternate function for QSPI (varies between
+    // 9 and 10) so there is no type alias for QSPI AF.
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::ClkPin: [Pb1<AF9>, Pb2<AF9>, Pd3<AF9>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1CsPin: [Pb6<AF10>, Pg6<AF10>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2CsPin: [Pc11<AF9>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1Io0Pin: [Pc9<AF9>, Pd11<AF9>, Pf8<AF10>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1Io1Pin: [Pc10<AF9>, Pd12<AF9>, Pf9<AF10>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1Io2Pin: [Pc8<AF9>, Pe2<AF9>, Pf7<AF9>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1Io3Pin: [Pa1<AF10>, Pd13<AF10>, Pf6<AF9>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io0Pin: [Pa6<AF10>, Pe7<AF10>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io1Pin: [Pa7<AF10>, Pe8<AF10>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io2Pin: [Pc4<AF10>, Pe9<AF10>, Pg9<AF9>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io3Pin: [Pc5<AF10>, Pe10<AF10>, Pg14<AF9>,]);
 };}
-
-// There is no consistent alternate function for QSPI (varies between
-// 9 and 10) so there is no type alias for QSPI AF.
-#[cfg(feature = "stm32f412")]
-seal_pins!(ClkPin: [Pb1<AF9>, Pb2<AF9>, Pd3<AF9>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk1CsPin: [Pb6<AF10>, Pg6<AF10>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk2CsPin: [Pc11<AF9>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk1Io0Pin: [Pc9<AF9>, Pd11<AF9>, Pf8<AF10>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk1Io1Pin: [Pc10<AF9>, Pd12<AF9>, Pf9<AF10>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk1Io2Pin: [Pc8<AF9>, Pe2<AF9>, Pf7<AF9>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk1Io3Pin: [Pa1<AF10>, Pd13<AF10>, Pf6<AF9>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk2Io0Pin: [Pa6<AF10>, Pe7<AF10>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk2Io1Pin: [Pa7<AF10>, Pe8<AF10>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk2Io2Pin: [Pc4<AF10>, Pe9<AF10>, Pg9<AF9>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(Bk2Io3Pin: [Pc5<AF10>, Pe10<AF10>, Pg14<AF9>,]);
 
 const MAX_DUMMY_CYCLES: u8 = 31;
 
