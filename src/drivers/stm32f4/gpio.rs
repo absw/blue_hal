@@ -5,17 +5,7 @@
 //! no "write" operation on a pin that has been configured as input).
 #![macro_use]
 
-use crate::stm32pac;
 use core::marker::PhantomData;
-
-/// Extension trait to split a GPIO peripheral in independent pins and registers
-pub trait GpioExt {
-    /// The type to split the GPIO into
-    type GpioWrapper;
-
-    /// Splits the GPIO block into independent pins and registers
-    fn split(self, rcc: &mut stm32pac::RCC) -> Self::GpioWrapper;
-}
 
 /// Input mode (Pin type state)
 pub struct Input<MODE> {
@@ -42,17 +32,46 @@ pub struct PushPull;
 /// Open drain output (Output type state)
 pub struct OpenDrain;
 
+#[macro_export]
+macro_rules! enable_gpio {
+    () => {
+        /// Extension trait to split a GPIO peripheral in independent pins and registers
+        pub trait GpioExt {
+            /// The type to split the GPIO into
+            type GpioWrapper;
+
+            /// Splits the GPIO block into independent pins and registers
+            fn split(self, rcc: &mut blue_hal::stm32pac::RCC) -> Self::GpioWrapper;
+        }
+
+        pin_rows!(a, b, c, d, e, f, g, h, i, j, k,);
+        alternate_functions!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,);
+        enable_qspi!();
+        enable_spi!();
+        enable_serial!();
+    }
+}
+
+#[allow(unused)]
+#[macro_export(local_inner_macros)]
+macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
+    $(
+        unsafe impl $function for $pin {}
+    )+
+};}
+
+
 // Typestate generator for all Alternate Functions
+#[macro_export(local_inner_macros)]
 macro_rules! alternate_functions {
     ($($i:expr, )+) => { $( paste::item! {
         /// Alternate function (Pin type state)
         pub struct [<AF $i>];
     } )+ }
 }
-// Expands into typestates AF0-AF15
-alternate_functions!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,);
 
 // Type generator for all pins
+#[macro_export(local_inner_macros)]
 macro_rules! pin_rows {
     ($($x:ident,)+) => {
         $(
@@ -60,6 +79,9 @@ macro_rules! pin_rows {
         )+
     }
 }
+
+#[allow(unused)]
+#[macro_export(local_inner_macros)]
 macro_rules! pin_row {
     ($x:ident, [$($i:expr,)+]) => { $( paste::item! {
         /// Pin with a MODE typestate
@@ -69,7 +91,6 @@ macro_rules! pin_row {
     } )+
     }
 }
-pin_rows!(a, b, c, d, e, f, g, h, i, j, k,);
 
 /// Instantiates a gpio pin row with default modes per available pin.
 ///
@@ -167,15 +188,16 @@ macro_rules! gpio_inner {
     ($GPIOx:ident, $gpiox:ident, $enable_pin:ident, $reset_pin:ident, $Pxx:ident, [
         $($Pxi:ident: ($pxi:ident, $i:expr, $default_mode:ty, $($earmark:ident, $function:ident$(<$T:ident>)?)?), )+
     ]) => {
+
         /// GPIO
         pub mod $gpiox {
             use core::marker::PhantomData;
-            use crate::hal::gpio::{OutputPin, InputPin};
+            use blue_hal::hal::gpio::{OutputPin, InputPin};
             use crate::ports::pin_configuration::*;
 
             // Lower case for identifier concatenation
             #[allow(unused_imports)]
-            use crate::stm32pac::{
+            use blue_hal::stm32pac::{
                 GPIOA as GPIOa,
                 GPIOB as GPIOb,
                 GPIOC as GPIOc,
@@ -188,13 +210,13 @@ macro_rules! gpio_inner {
 
             #[allow(unused_imports)]
             #[cfg(not(feature = "stm32f412"))]
-            use crate::stm32pac::{
+            use blue_hal::stm32pac::{
                 GPIOI as GPIOi,
                 GPIOJ as GPIOj,
                 GPIOK as GPIOk,
             };
 
-            use crate::drivers::stm32f4::gpio::*;
+            use blue_hal::drivers::stm32f4::gpio::*;
 
             /// GPIO parts
             pub struct GpioWrapper {
@@ -207,7 +229,7 @@ macro_rules! gpio_inner {
             impl GpioExt for $GPIOx {
                 type GpioWrapper = GpioWrapper;
 
-                fn split(self, rcc: &mut crate::stm32pac::RCC) -> GpioWrapper {
+                fn split(self, rcc: &mut blue_hal::stm32pac::RCC) -> GpioWrapper {
                     rcc.ahb1enr.modify(|_, w| w.$enable_pin().enabled());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().set_bit());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().clear_bit());
