@@ -36,8 +36,8 @@ cortex-m-semihosting = "0.3.7"
 nb = "1.0.0"
 paste = "1.0.4"
 static_assertions = "1.1.0"
-defmt = { git = "https://github.com/knurling-rs/defmt", rev = "c4461eb148461e54d9a1e203cf01393f07ce84f0" }
-defmt-rtt = { git = "https://github.com/knurling-rs/defmt", rev = "c4461eb148461e54d9a1e203cf01393f07ce84f0" }
+defmt = { git = "https://github.com/knurling-rs/defmt", rev = "a4400d8f3e58c89e97d9d10056df501d4434e6b6" }
+defmt-rtt = { git = "https://github.com/knurling-rs/defmt", rev = "a4400d8f3e58c89e97d9d10056df501d4434e6b6" }
 
 [dependencies.nom]
 version = "6.0.1"
