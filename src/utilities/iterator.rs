@@ -38,16 +38,14 @@ impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> Iterator for UntilSequenceIte
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // The sequence has been found while iterating, so we stop here
-        if self.tail == self.sequence.len() {
-            return None;
-        }
-
         loop {
-            if self.divergent.is_some() {
+            if self.tail == self.sequence.len() {
+                // The sequence has been found while iterating, so we stop here
+                break None;
+            } else if self.divergent.is_some() {
                 // A value has diverged from the secuence, so we track
                 // the sequence back up until we return the divergent.
-                break self.iterate_on_sequence()
+                break self.iterate_on_sequence();
             } else if let Some(candidate) = self.inner.next() {
                 if candidate == self.sequence[self.tail] {
                     self.tail += 1;
@@ -94,9 +92,10 @@ mod test {
 
     #[test]
     fn iterating_until_sequence() {
-        assert!([3, 4, 1, 5].iter().all_unique());
-        assert!(![1, 2, 3, 3, 2].iter().all_unique());
-        assert!(["fish", "foot", "fly", "foresight"].iter().all_unique());
-        assert!(![None, Some(3), Some(5), None].iter().all_unique());
+        let values = [3, 4, 1, 5, 2, 3, 7, 8];
+        let sequence = [2, 3, 7];
+
+        let expected = vec![3, 4, 1, 5];
+        assert_eq!(expected, values.iter().cloned().until_sequence(&sequence).collect::<Vec<u8>>());
     }
 }
