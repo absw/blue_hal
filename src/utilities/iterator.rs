@@ -89,13 +89,30 @@ mod test {
         assert!(![None, Some(3), Some(5), None].iter().all_unique());
     }
 
-
     #[test]
     fn iterating_until_sequence() {
         let values = [3, 4, 1, 5, 2, 3, 7, 8];
         let sequence = [2, 3, 7];
 
         let expected = vec![3, 4, 1, 5];
+        assert_eq!(expected, values.iter().cloned().until_sequence(&sequence).collect::<Vec<u8>>());
+    }
+
+    #[test]
+    fn iterating_until_partial_sequence() {
+        let values = [3, 4, 1, 5, 2, 3];
+        let sequence = [2, 3, 7];
+
+        let expected = vec![3, 4, 1, 5, 2, 3];
+        assert_eq!(expected, values.iter().cloned().until_sequence(&sequence).collect::<Vec<u8>>());
+    }
+
+    #[test]
+    fn iterating_until_sequence_not_found() {
+        let values = [3, 4, 1, 5, 2, 3];
+        let sequence = [3, 3, 3];
+
+        let expected = vec![3, 4, 1, 5, 2, 3];
         assert_eq!(expected, values.iter().cloned().until_sequence(&sequence).collect::<Vec<u8>>());
     }
 }
