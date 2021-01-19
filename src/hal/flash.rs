@@ -81,21 +81,21 @@ impl<'a, R: ReadWrite + ?Sized> Iterator for ReadIterator<'a, R> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.errored {
-            None
-        } else {
-            if self.buffer_head == ITERATOR_BUFFER_SIZE {
-                if nb::block!(self.reader.read(self.address, &mut self.buffer)).is_err() {
-                    self.errored = true;
-                    return None;
-                };
-                self.buffer_head = 0;
-                self.address = self.address + ITERATOR_BUFFER_SIZE;
-            }
-
-            let byte = self.buffer[self.buffer_head];
-            self.buffer_head += 1;
-            Some(byte)
+            return None
         }
+
+        if self.buffer_head == ITERATOR_BUFFER_SIZE {
+            if nb::block!(self.reader.read(self.address, &mut self.buffer)).is_err() {
+                self.errored = true;
+                return None;
+            };
+            self.buffer_head = 0;
+            self.address = self.address + ITERATOR_BUFFER_SIZE;
+        }
+
+        let byte = self.buffer[self.buffer_head];
+        self.buffer_head += 1;
+        Some(byte)
     }
 }
 

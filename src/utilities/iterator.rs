@@ -43,7 +43,7 @@ impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> Iterator for UntilSequenceIte
                 // The sequence has been found while iterating, so we stop here
                 break None;
             } else if self.divergent.is_some() {
-                // A value has diverged from the secuence, so we track
+                // A value has diverged from the sequence, so we track
                 // the sequence back up until we return the divergent.
                 break self.iterate_on_sequence();
             } else if let Some(candidate) = self.inner.next() {
@@ -60,10 +60,9 @@ impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> Iterator for UntilSequenceIte
 }
 
 impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> UntilSequenceIterator<'a, T, I> {
-
-    // Each call to this function retrieves one element from the sequence until
-    // reaching the divergent. It then retrieves the divergent and clears it.
-    // If there is no divergent, simply returns the sequence until consumed.
+    // Each call to this function yields one element from the sequence until
+    // reaching the divergent. It then yields the divergent and clears it.
+    // If there is no divergent, simply yields the sequence until fully consumed.
     fn iterate_on_sequence(&mut self) -> Option<T> {
         if self.head == self.tail {
             let divergent = self.divergent.take();
