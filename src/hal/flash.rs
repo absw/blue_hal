@@ -12,6 +12,15 @@ pub trait ReadWrite {
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;
     fn range(&self) -> (Self::Address, Self::Address);
     fn erase(&mut self) -> nb::Result<(), Self::Error>;
+    fn bytes(&mut self, address: Self::Address) -> ReadIterator<Self> {
+        ReadIterator {
+            reader: self,
+            address,
+            errored: false,
+            buffer: [0u8; ITERATOR_BUFFER_SIZE],
+            buffer_head: ITERATOR_BUFFER_SIZE,
+        }
+    }
 }
 
 pub trait UnportableSerialize: ReadWrite {
@@ -56,3 +65,54 @@ pub trait UnportableDeserialize: ReadWrite {
     }
 }
 impl<F: ReadWrite> UnportableDeserialize for F {}
+
+const ITERATOR_BUFFER_SIZE: usize = 2048;
+
+pub struct ReadIterator<'a, R: ReadWrite + ?Sized> {
+    reader: &'a mut R,
+    errored: bool,
+    buffer: [u8; ITERATOR_BUFFER_SIZE],
+    address: R::Address,
+    buffer_head: usize,
+}
+
+impl<'a, R: ReadWrite + ?Sized> Iterator for ReadIterator<'a, R> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.errored {
+            return None
+        }
+
+        if self.buffer_head == ITERATOR_BUFFER_SIZE {
+            if nb::block!(self.reader.read(self.address, &mut self.buffer)).is_err() {
+                self.errored = true;
+                return None;
+            };
+            self.buffer_head = 0;
+            self.address = self.address + ITERATOR_BUFFER_SIZE;
+        }
+
+        let byte = self.buffer[self.buffer_head];
+        self.buffer_head += 1;
+        Some(byte)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::hal::doubles::flash::*;
+
+    #[test]
+    fn iterating_over_fake_flash() {
+        let mut expected_bytes = Vec::new();
+        for i in 0..10000 {
+            expected_bytes.push(i as u8);
+        }
+        let mut flash = FakeFlash::new(Address(0));
+        flash.write(Address(0), expected_bytes.as_slice());
+        let bytes: Vec<u8> = flash.bytes(Address(0)).take(10000).collect();
+        assert_eq!(expected_bytes, bytes);
+    }
+}

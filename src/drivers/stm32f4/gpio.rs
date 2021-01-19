@@ -49,7 +49,7 @@ macro_rules! enable_gpio {
         enable_qspi!();
         enable_spi!();
         enable_serial!();
-    }
+    };
 }
 
 #[allow(unused)]
@@ -59,7 +59,6 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
         unsafe impl $function for $pin {}
     )+
 };}
-
 
 // Typestate generator for all Alternate Functions
 #[macro_export(local_inner_macros)]
