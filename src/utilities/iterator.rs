@@ -108,6 +108,15 @@ mod test {
     }
 
     #[test]
+    fn iterating_with_partial_sequence_in_between() {
+        let values = [3, 4, 1, 5, 2, 3];
+        let sequence = [1, 5, 7];
+
+        let expected = vec![3, 4, 1, 5, 2, 3];
+        assert_eq!(expected, values.iter().cloned().until_sequence(&sequence).collect::<Vec<u8>>());
+    }
+
+    #[test]
     fn iterating_until_sequence_not_found() {
         let values = [3, 4, 1, 5, 2, 3];
         let sequence = [3, 3, 3];
