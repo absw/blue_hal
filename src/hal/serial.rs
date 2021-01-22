@@ -100,6 +100,17 @@ macro_rules! uprintln {
     };
 }
 
+/// prints to both DEFMT deferred debug and serial
+#[macro_export]
+macro_rules! duprintln {
+    ($serial:expr, $($arg:tt)+) => {
+        {
+            defmt::info!($($arg)+);
+            let _ = uwriteln!($serial, $($arg)+ );
+        }
+    };
+}
+
 /// Panics if uncapable of writing.
 #[macro_export]
 macro_rules! critical_uprint {
