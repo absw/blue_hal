@@ -278,9 +278,14 @@ where
 
     fn verify_id(&mut self) -> nb::Result<(), Error> {
         let mut response = [0u8; 1];
+        let command = 
+        match self.qspi.mode() {
+            qspi::Mode::Single => Command::ReadId,
+            _ => Command::MultipleIOReadId,
+        };
         Self::execute_command(
             &mut self.qspi,
-            Command::ReadId,
+            command,
             None,
             qspi::Data::Read(&mut response),
         )?;

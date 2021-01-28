@@ -88,4 +88,6 @@ pub trait Indirect {
     type Error;
 
     fn execute_command(&mut self, command: &mut QSPICommand) -> nb::Result<(), Self::Error>;
+
+    fn mode(&self) -> Mode;
 }
