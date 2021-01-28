@@ -157,6 +157,8 @@ enum Command {
     ReadId = 0x9E,
     BulkErase = 0xC7,
     MultipleIOReadId = 0xAF,
+    /// Read enhanced volatile configuration register
+    ReadEVCR = 0x65,
 }
 
 struct Status {
@@ -447,6 +449,26 @@ mod test {
                 .instruction.unwrap();
             assert_eq!(actual_comand, expected_command as u8);
         }
+    }
+
+    #[test]
+    fn initialisation_checks_evcr_for_qspi_protocol() {
+        // Given
+        let mut qspi = MockQspi::default();
+        const EVCR_CONTENT : u8 = 0b11011111;
+        qspi.to_read.push_back(vec![EVCR_CONTENT]);
+
+        qspi.to_read.push_back(vec![MANUFACTURER_ID]);
+
+        // When
+        let flash = FlashToTest::new(qspi)
+            .unwrap();
+
+        // Then
+        let actual_comand = flash.qspi.command_records
+            .first().unwrap()
+            .instruction.unwrap();
+        assert_eq!(actual_comand, Command::ReadEVCR as u8);
     }
 
     #[test]
