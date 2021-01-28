@@ -1,4 +1,4 @@
-use crate::hal::qspi::{self, Indirect, QSPICommand};
+use crate::hal::qspi::{self, Mode, Indirect, QSPICommand};
 use std::collections::VecDeque;
 
 #[derive(Clone, Debug)]
@@ -22,6 +22,7 @@ impl CommandRecord {
 
 #[derive(Default)]
 pub struct MockQspi {
+    pub mode: Mode,
     pub command_records: Vec<CommandRecord>,
     pub to_read: VecDeque<Vec<u8>>,
 }
