@@ -1,4 +1,4 @@
-use crate::hal::qspi::Indirect;
+use crate::hal::qspi::{self, Indirect, QSPICommand};
 use std::collections::VecDeque;
 
 #[derive(Clone, Debug)]
@@ -36,38 +36,27 @@ impl MockQspi {
 impl Indirect for MockQspi {
     type Error = ();
 
-    fn write(
-        &mut self,
-        instruction: Option<u8>,
-        address: Option<u32>,
-        data: Option<&[u8]>,
-        dummy_cycles: u8,
-    ) -> nb::Result<(), Self::Error> {
-        self.command_records.push(CommandRecord {
-            instruction,
-            address,
-            data: Some(data.unwrap_or_default().to_vec()),
-            length_requested: 0,
-            dummy_cycles,
-        });
-        Ok(())
-    }
+    fn execute_command(&mut self, command: &mut QSPICommand) -> nb::Result<(), Self::Error> {
+        let (length_requested, data) = match command.data_ref() {
+            qspi::Data::WriteNone => (0, None),
+            qspi::Data::Write(data) => (0, Some(data.to_vec())),
+            qspi::Data::Read(data) => (data.len(), Some(data.to_vec())),
+        };
 
-    fn read(
-        &mut self,
-        instruction: Option<u8>,
-        address: Option<u32>,
-        data: &mut [u8],
-        dummy_cycles: u8,
-    ) -> nb::Result<(), Self::Error> {
         self.command_records.push(CommandRecord {
-            instruction,
-            address,
-            data: Some(data.to_vec()),
-            length_requested: data.len(),
-            dummy_cycles,
+            instruction: command.instruction(),
+            address: command.address(),
+            data,
+            length_requested,
+            dummy_cycles: command.dummy_cycles(),
         });
-        data.iter_mut().zip(self.to_read.pop_front().unwrap_or_default()).for_each(|(o, i)| *o = i);
+
+        if let qspi::Data::Read(data) = command.data_mut() {
+            data.iter_mut()
+                .zip(self.to_read.pop_front().unwrap_or_default())
+                .for_each(|(o, i)| *o = i);
+        }
+
         Ok(())
     }
 }
