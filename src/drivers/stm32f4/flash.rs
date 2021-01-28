@@ -341,9 +341,7 @@ impl ReadWrite for McuFlash {
 
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         let range = Range(address, Address(address.0 + bytes.len() as u32));
-        if address.0 % 4 != 0 {
-            Err(nb::Error::Other(Error::MisalignedAccess))
-        } else if !range.is_writable() {
+        if !range.is_writable() {
             Err(nb::Error::Other(Error::MemoryNotReachable))
         } else {
             let base = address.0 as *const u8;

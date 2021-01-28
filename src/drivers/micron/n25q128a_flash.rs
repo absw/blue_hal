@@ -185,6 +185,7 @@ where
             Self::execute_command(&mut self.qspi, Command::WriteEnable, None, CommandData::None)?;
             Self::execute_command(&mut self.qspi, Command::BulkErase, None, CommandData::None)?;
             Self::execute_command(&mut self.qspi, Command::WriteDisable, None, CommandData::None)?;
+            while Self::status(&mut self.qspi)?.write_in_progress {}
             Ok(())
         }
     }
