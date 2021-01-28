@@ -1,3 +1,15 @@
+/// QSPI mode used by QSPICommand to override configured mode.
+#[derive(Clone, Copy)]
+pub enum Mode {
+    Single,
+    Dual,
+    Quad,
+}
+
+impl Default for Mode {
+    fn default() -> Self { Self::Single }
+}
+
 /// Data used during a QSPI operation.
 pub enum Data<'a> {
     WriteNone,
@@ -11,6 +23,7 @@ pub struct QSPICommand<'a> {
     address: Option<u32>,
     data: Data<'a>,
     dummy_cycles: u8,
+    mode_override: Option<Mode>,
 }
 
 impl<'a> Default for QSPICommand<'a> {
@@ -20,6 +33,7 @@ impl<'a> Default for QSPICommand<'a> {
             address: None,
             data: Data::WriteNone,
             dummy_cycles: 0,
+            mode_override: None,
         }
     }
 }
@@ -49,6 +63,10 @@ impl<'a> QSPICommand<'a> {
         Self { dummy_cycles, ..self }
     }
 
+    pub fn with_mode(self, mode: Mode) -> Self {
+        Self { mode_override: Some(mode), ..self }
+    }
+
     pub fn instruction(&self) -> Option<u8> { self.instruction }
 
     pub fn address(&self) -> Option<u32> { self.address }
@@ -58,6 +76,8 @@ impl<'a> QSPICommand<'a> {
     pub fn data(self) -> Data<'a> { self.data }
 
     pub fn dummy_cycles(&self) -> u8 { self.dummy_cycles }
+
+    pub fn mode_override(&self) -> Option<Mode> { self.mode_override }
 }
 
 /// Quad SPI configured in Indirect mode.

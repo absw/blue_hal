@@ -287,6 +287,15 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
         const INDIRECT_WRITE_MODE : u8 = 0b00;
         const INDIRECT_READ_MODE : u8 = 0b01;
         const PROTOCOL_SINGLE_MODE : u8 = 0b01;
+        const PROTOCOL_DUAL_MODE : u8 = 0b10;
+        const PROTOCOL_QUAD_MODE : u8 = 0b10;
+
+        let protocol_mode = match command.mode_override() {
+            Some(qspi::Mode::Single) => PROTOCOL_SINGLE_MODE,
+            Some(qspi::Mode::Dual) => PROTOCOL_DUAL_MODE,
+            Some(qspi::Mode::Quad) => PROTOCOL_QUAD_MODE,
+            None => PROTOCOL_SINGLE_MODE,
+        };
 
         let (data_length, data_mode, functional_mode) = match command.data_ref() {
             qspi::Data::WriteNone => (
@@ -296,12 +305,12 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
             ),
             qspi::Data::Read(data) => (
                 data.len().saturating_sub(1) as u32,
-                PROTOCOL_SINGLE_MODE,
+                protocol_mode,
                 INDIRECT_READ_MODE
             ),
             qspi::Data::Write(data) => (
                 data.len().saturating_sub(1) as u32,
-                PROTOCOL_SINGLE_MODE,
+                protocol_mode,
                 INDIRECT_WRITE_MODE
             )
         };
@@ -328,7 +337,7 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
             .adsize()
                 .bits(address_size)
             .admode()
-                .bits(PROTOCOL_SINGLE_MODE)
+                .bits(protocol_mode)
             .imode()
                 .bits(instruction_mode)
             .instruction()
