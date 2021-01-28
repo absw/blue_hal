@@ -156,6 +156,7 @@ enum Command {
     SubsectorErase = 0x20,
     ReadId = 0x9E,
     BulkErase = 0xC7,
+    MultipleIOReadId = 0xAF,
 }
 
 struct Status {
@@ -418,6 +419,30 @@ mod test {
 
         // Then
         assert!(FlashToTest::new(qspi).is_ok());
+    }
+
+    #[test]
+    fn initialisation_uses_correct_read_id_commands() {
+        for &(mode, expected_command) in &[
+            (qspi::Mode::Single, Command::ReadId),
+            (qspi::Mode::Dual, Command::MultipleIOReadId),
+            (qspi::Mode::Quad, Command::MultipleIOReadId),
+        ] {
+            // Given
+            let mut qspi = MockQspi::default();
+            qspi.mode = mode;
+            qspi.to_read.push_back(vec![MANUFACTURER_ID]);
+
+            // When
+            let flash = FlashToTest::new(qspi)
+                .unwrap();
+
+            // Then
+            let actual_comand = flash.qspi.command_records
+                .last().unwrap()
+                .instruction.unwrap();
+            assert_eq!(actual_comand, expected_command as u8);
+        }
     }
 
     #[test]
