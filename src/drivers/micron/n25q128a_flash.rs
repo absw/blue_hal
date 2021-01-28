@@ -163,12 +163,6 @@ struct Status {
     _write_enable_latch: bool,
 }
 
-enum CommandData<'a> {
-    Read(&'a mut [u8]),
-    Write(&'a [u8]),
-    None,
-}
-
 impl<QSPI, NOW> ReadWrite for MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
@@ -182,9 +176,12 @@ where
         if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
         } else {
-            Self::execute_command(&mut self.qspi, Command::WriteEnable, None, CommandData::None)?;
-            Self::execute_command(&mut self.qspi, Command::BulkErase, None, CommandData::None)?;
-            Self::execute_command(&mut self.qspi, Command::WriteDisable, None, CommandData::None)?;
+            Self::execute_command(
+                &mut self.qspi, Command::WriteEnable, None, qspi::Data::WriteNone)?;
+            Self::execute_command(
+                &mut self.qspi, Command::BulkErase, None, qspi::Data::WriteNone)?;
+            Self::execute_command(
+                &mut self.qspi, Command::WriteDisable, None, qspi::Data::WriteNone)?;
             Ok(())
         }
     }
@@ -228,7 +225,7 @@ where
                 &mut self.qspi,
                 Command::Read,
                 Some(address),
-                CommandData::Read(bytes),
+                qspi::Data::Read(bytes),
             )
         }
     }
@@ -263,20 +260,18 @@ where
         qspi: &mut QSPI,
         command: Command,
         address: Option<Address>,
-        data: CommandData,
+        data: qspi::Data,
     ) -> nb::Result<(), Error> {
-        match data {
-            CommandData::Write(buffer) => {
-                block!(qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
-            }
-            CommandData::Read(buffer) => {
-                block!(qspi.read(Some(command as u8), address.map(|a| a.0), buffer, 0))
-            }
-            CommandData::None => {
-                block!(qspi.write(Some(command as u8), address.map(|a| a.0), None, 0))
-            }
+        let mut command = qspi::QSPICommand::default()
+            .with_instruction(command as u8)
+            .with_dummy_cycles(0)
+            .with_data(data);
+        if let Some(address) = address {
+            command = command.with_address(address.0);
         }
-        .map_err(|_| nb::Error::Other(Error::QspiError))
+
+        block!(qspi.execute_command(&mut command))
+            .map_err(|_| nb::Error::Other(Error::QspiError))
     }
 
     fn verify_id(&mut self) -> nb::Result<(), Error> {
@@ -285,7 +280,7 @@ where
             &mut self.qspi,
             Command::ReadId,
             None,
-            CommandData::Read(&mut response),
+            qspi::Data::Read(&mut response),
         )?;
         match response[0] {
             MANUFACTURER_ID => Ok(()),
@@ -295,7 +290,7 @@ where
 
     fn status(qspi: &mut QSPI) -> nb::Result<Status, Error> {
         let mut response = [0u8; 1];
-        Self::execute_command(qspi, Command::ReadStatus, None, CommandData::Read(&mut response))?;
+        Self::execute_command(qspi, Command::ReadStatus, None, qspi::Data::Read(&mut response))?;
         let response = response[0];
         Ok(Status {
             write_in_progress: response.is_set(0),
@@ -324,13 +319,13 @@ where
             &mut self.qspi,
             Command::WriteEnable,
             None,
-            CommandData::None
+            qspi::Data::WriteNone,
         ))?;
         block!(Self::execute_command(
             &mut self.qspi,
             Command::SubsectorErase,
             Some(subsector.location()),
-            CommandData::None
+            qspi::Data::WriteNone,
         ))?;
         Ok(block!(self.wait_until_write_complete())?)
     }
@@ -347,13 +342,13 @@ where
             &mut self.qspi,
             Command::WriteEnable,
             None,
-            CommandData::None
+            qspi::Data::WriteNone,
         ))?;
         block!(Self::execute_command(
             &mut self.qspi,
             Command::PageProgram,
             Some(address),
-            CommandData::Write(&bytes)
+            qspi::Data::Write(&bytes),
         ))?;
         Ok(block!(self.wait_until_write_complete())?)
     }
