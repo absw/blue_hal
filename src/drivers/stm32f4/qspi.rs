@@ -1,7 +1,7 @@
 //! Quadspi driver for the stm32f412.
 
 use crate::{
-    hal::qspi,
+    hal::qspi::{self, QSPICommand },
     stm32pac::{QUADSPI as QuadSpiPeripheral, RCC},
 };
 use core::marker::PhantomData;
@@ -267,18 +267,16 @@ impl<PINS, MODE> QuadSpi<PINS, MODE> {
 impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
     type Error = Error;
 
-    fn write(
-        &mut self,
-        instruction: Option<u8>,
-        address: Option<u32>,
-        data: Option<&[u8]>,
-        dummy_cycles: u8,
-    ) -> nb::Result<(), Self::Error> {
-        if dummy_cycles > MAX_DUMMY_CYCLES {
+    fn execute_command(&mut self, command: &mut QSPICommand) -> nb::Result<(), Self::Error> {
+        if command.dummy_cycles() > MAX_DUMMY_CYCLES {
             return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
         }
 
-        let adsize = match self.config.flash_size_bits {
+        if self.status().busy {
+            return Err(nb::Error::WouldBlock);
+        }
+
+        let address_size = match self.config.flash_size_bits {
             8 => 0b00,
             16 => 0b01,
             24 => 0b10,
@@ -286,109 +284,78 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
             _ => panic!("Invalid flash size"),
         };
 
-        if self.status().busy {
-            // Early yield if busy
-            return Err(nb::Error::WouldBlock);
-        }
+        const INDIRECT_WRITE_MODE : u8 = 0b00;
+        const INDIRECT_READ_MODE : u8 = 0b01;
+        const PROTOCOL_SINGLE_MODE : u8 = 0b01;
+
+        let (data_length, data_mode, functional_mode) = match command.data_ref() {
+            qspi::Data::WriteNone => (
+                0u32,
+                0u8,
+                INDIRECT_WRITE_MODE
+            ),
+            qspi::Data::Read(data) => (
+                data.len().saturating_sub(1) as u32,
+                PROTOCOL_SINGLE_MODE,
+                INDIRECT_READ_MODE
+            ),
+            qspi::Data::Write(data) => (
+                data.len().saturating_sub(1) as u32,
+                PROTOCOL_SINGLE_MODE,
+                INDIRECT_WRITE_MODE
+            )
+        };
 
         // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
         // Applies to all unsafe blocks in this function unless specified otherwise.
         // Sets Data Length Register, configuring the amount of bytes to write.
-        self.qspi.dlr.write(|w| unsafe {
-            w.bits(if let Some(data) = data { data.len().saturating_sub(1) as u32 } else { 0 })
-        });
+        self.qspi.dlr.write(|w| unsafe { w.bits(data_length) });
+
+        let (instruction_mode, instruction) = match command.instruction() {
+            Some(i) => (PROTOCOL_SINGLE_MODE, i),
+            None => (0x00, 0x00),
+        };
 
         // Configure Communicaton Configuration Register.
-        // This sets up all rules for this QSPI write.
+        // This sets up all rules for this QSPI operation.
         self.qspi.ccr.write(|w| unsafe {
-            if let Some(instruction) = instruction {
-                w.imode().bits(0b01).instruction().bits(instruction)
-            } else {
-                w
-            }
-            .fmode()
-            .bits(0b00) // indirect write mode
-            .adsize()
-            .bits(adsize)
-            .admode()
-            .bits(if address.is_some() { 0b01 } else { 0b00 })
+            w.fmode()
+                .bits(functional_mode)
             .dmode()
-            .bits(if data.is_some() { 0b01 } else { 0b00 })
+                .bits(data_mode)
             .dcyc()
-            .bits(dummy_cycles)
+                .bits(command.dummy_cycles())
+            .adsize()
+                .bits(address_size)
+            .admode()
+                .bits(PROTOCOL_SINGLE_MODE)
+            .imode()
+                .bits(instruction_mode)
+            .instruction()
+                .bits(instruction)
         });
 
         // Sets Address to write to.
-        if let Some(address) = address {
+        if let Some(address) = command.address() {
             self.qspi.ar.write(|w| unsafe { w.bits(address) })
         };
 
-        // Write loop (checking FIFO threshold to ensure it is possible to write 4 bytes).
-        if let Some(data) = data {
-            for byte in data {
-                block!(self.write_byte(*byte))?;
-            }
+        match command.data_mut() {
+            qspi::Data::WriteNone => Ok(()),
+            qspi::Data::Read(data) => {
+                // Read loop (checking FIFO threshold to ensure it is possible to read 4 bytes).
+                for byte in data.iter_mut() {
+                    *byte = block!(self.read_byte())?;
+                }
+                Ok(())
+            },
+            qspi::Data::Write(data) => {
+                // Write loop (checking FIFO threshold to ensure it is possible to write 4 bytes).
+                for byte in data.iter() {
+                    block!(self.write_byte(*byte))?;
+                }
+                Ok(())
+            },
         }
-        Ok(())
-    }
-
-    fn read(
-        &mut self,
-        instruction: Option<u8>,
-        address: Option<u32>,
-        data: &mut [u8],
-        dummy_cycles: u8,
-    ) -> nb::Result<(), Self::Error> {
-        if dummy_cycles > MAX_DUMMY_CYCLES {
-            return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
-        }
-
-        let adsize = match self.config.flash_size_bits {
-            8 => 0b00,
-            16 => 0b01,
-            24 => 0b10,
-            32 => 0b11,
-            _ => panic!("Invalid flash size"),
-        };
-
-        if self.status().busy {
-            // Early yield if busy
-            return Err(nb::Error::WouldBlock);
-        }
-        // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
-        // Applies to all unsafe blocks in this function unless specified otherwise.
-        // Sets Data Length Register, configuring the amount of bytes to read.
-        self.qspi.dlr.write(|w| unsafe { w.bits(data.len().saturating_sub(1) as u32) });
-
-        // Configure Communicaton Configuration Register.
-        // This sets up all rules for this QSPI read.
-        self.qspi.ccr.write(|w| unsafe {
-            if let Some(instruction) = instruction {
-                w.imode().bits(0b01).instruction().bits(instruction)
-            } else {
-                w
-            }
-            .fmode()
-            .bits(0b01) // indirect read mode
-            .adsize()
-            .bits(adsize)
-            .admode()
-            .bits(if address.is_some() { 0b01 } else { 0b00 })
-            .dmode()
-            .bits(0b01)
-            .dcyc()
-            .bits(dummy_cycles)
-        });
-
-        // Sets Address to read from.
-        if let Some(address) = address {
-            self.qspi.ar.write(|w| unsafe { w.bits(address) })
-        };
-
-        // Read loop (checking FIFO threshold to ensure it is possible to read 4 bytes).
-        for byte in data {
-            *byte = block!(self.read_byte())?;
-        }
-        Ok(())
     }
 }
