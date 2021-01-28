@@ -367,4 +367,8 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
             },
         }
     }
+
+    fn mode(&self) -> qspi::Mode {
+        qspi::Mode::Single
+    }
 }

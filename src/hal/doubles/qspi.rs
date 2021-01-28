@@ -60,4 +60,8 @@ impl Indirect for MockQspi {
 
         Ok(())
     }
+
+    fn mode(&self) -> qspi::Mode {
+        self.mode
+    }
 }
