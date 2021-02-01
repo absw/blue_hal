@@ -392,7 +392,7 @@ mod test {
     type FlashToTest = MicronN25q128a<MockQspi, MockSysTick>;
     fn flash_to_test() -> FlashToTest {
         let mut qspi = MockQspi::default();
-        const EVCR_CONTENT : u8 = 0b00000000;
+        const EVCR_CONTENT : u8 = 0b11000000;
         qspi.to_read.push_back(vec![EVCR_CONTENT]);
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);
         let mut flash = MicronN25q128a::new(qspi).unwrap();
@@ -436,7 +436,7 @@ mod test {
     fn initialisation_succeeds_for_correct_manufacturer_id() {
         const WRONG_MANUFACTURER_ID: u8 = 0x21;
         let mut qspi = MockQspi::default();
-        qspi.to_read.push_back(vec![0b00000000]);
+        qspi.to_read.push_back(vec![0b11000000]);
         qspi.to_read.push_back(vec![WRONG_MANUFACTURER_ID]);
 
         // Then
@@ -444,7 +444,7 @@ mod test {
 
         // Given
         let mut qspi = MockQspi::default();
-        qspi.to_read.push_back(vec![0b00000000]);
+        qspi.to_read.push_back(vec![0b11000000]);
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);
 
         // Then
@@ -453,15 +453,15 @@ mod test {
 
     #[test]
     fn initialisation_uses_correct_read_id_commands() {
-        for &(mode, expected_command) in &[
-            (qspi::Mode::Single, Command::ReadId),
-            (qspi::Mode::Dual, Command::MultipleIOReadId),
-            (qspi::Mode::Quad, Command::MultipleIOReadId),
+        for &(mode, expected_command, evcr_content) in &[
+            (qspi::Mode::Single, Command::ReadId, 0b1100_0000u8),
+            (qspi::Mode::Dual, Command::MultipleIOReadId, 0b1000_0000u8),
+            (qspi::Mode::Quad, Command::MultipleIOReadId, 0b0100_0000u8),
         ] {
             // Given
             let mut qspi = MockQspi::default();
             qspi.mode = mode;
-            qspi.to_read.push_back(vec![0b00000000]);
+            qspi.to_read.push_back(vec![evcr_content]);
             qspi.to_read.push_back(vec![MANUFACTURER_ID]);
 
             // When
@@ -481,7 +481,9 @@ mod test {
         // Given
         let mut qspi = MockQspi::default();
         qspi.mode = qspi::Mode::Dual;
-        const SINGLE_MODE_EVCR_CONTENT: u8 = 0b0001_1111;
+        const SINGLE_MODE_EVCR_CONTENT: u8 = 0b1101_1111;
+        const INVALID_EVCR_CONTENT: u8 = 0b00000000;
+        qspi.to_read.push_back(vec![INVALID_EVCR_CONTENT]);
         qspi.to_read.push_back(vec![SINGLE_MODE_EVCR_CONTENT]);
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);
 
