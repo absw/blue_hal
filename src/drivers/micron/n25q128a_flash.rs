@@ -308,13 +308,13 @@ where
     }
 
     /// Blocks until flash ID read checks out, or until timeout
-    pub fn new(qspi: QSPI) -> Result<Self, Error> {
+    pub fn new(mut qspi: QSPI) -> Result<Self, Error> {
         let mut flash = Self { qspi, timeout: None, _marker: Default::default() };
         block!(flash.verify_id())?;
         Ok(flash)
     }
 
-    pub fn with_timeout(qspi: QSPI, timeout: time::Milliseconds) -> Result<Self, Error> {
+    pub fn with_timeout(mut qspi: QSPI, timeout: time::Milliseconds) -> Result<Self, Error> {
         let mut flash = Self { qspi, timeout: Some(timeout), _marker: Default::default() };
         block!(flash.verify_id())?;
         Ok(flash)
@@ -375,10 +375,14 @@ mod test {
     type FlashToTest = MicronN25q128a<MockQspi, MockSysTick>;
     fn flash_to_test() -> FlashToTest {
         let mut qspi = MockQspi::default();
+        const EVCR_CONTENT : u8 = 0b00000000;
+        qspi.to_read.push_back(vec![EVCR_CONTENT]);
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);
         let mut flash = MicronN25q128a::new(qspi).unwrap();
-        let initial_read = flash.qspi.command_records[0].clone();
-        assert_eq!(initial_read.instruction, Some(Command::ReadId as u8));
+        let first_read = flash.qspi.command_records[0].clone();
+        let second_read = flash.qspi.command_records[1].clone();
+        assert_eq!(first_read.instruction, Some(Command::ReadEVCR as u8));
+        assert_eq!(second_read.instruction, Some(Command::ReadId as u8));
         flash.qspi.clear();
         flash
     }
@@ -415,6 +419,7 @@ mod test {
     fn initialisation_succeeds_for_correct_manufacturer_id() {
         const WRONG_MANUFACTURER_ID: u8 = 0x21;
         let mut qspi = MockQspi::default();
+        qspi.to_read.push_back(vec![0b00000000]);
         qspi.to_read.push_back(vec![WRONG_MANUFACTURER_ID]);
 
         // Then
@@ -422,6 +427,7 @@ mod test {
 
         // Given
         let mut qspi = MockQspi::default();
+        qspi.to_read.push_back(vec![0b00000000]);
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);
 
         // Then
@@ -438,6 +444,7 @@ mod test {
             // Given
             let mut qspi = MockQspi::default();
             qspi.mode = mode;
+            qspi.to_read.push_back(vec![0b00000000]);
             qspi.to_read.push_back(vec![MANUFACTURER_ID]);
 
             // When
@@ -450,26 +457,6 @@ mod test {
                 .instruction.unwrap();
             assert_eq!(actual_comand, expected_command as u8);
         }
-    }
-
-    #[test]
-    fn initialisation_checks_evcr_for_qspi_protocol() {
-        // Given
-        let mut qspi = MockQspi::default();
-        const EVCR_CONTENT : u8 = 0b11011111;
-        qspi.to_read.push_back(vec![EVCR_CONTENT]);
-
-        qspi.to_read.push_back(vec![MANUFACTURER_ID]);
-
-        // When
-        let flash = FlashToTest::new(qspi)
-            .unwrap();
-
-        // Then
-        let actual_comand = flash.qspi.command_records
-            .first().unwrap()
-            .instruction.unwrap();
-        assert_eq!(actual_comand, Command::ReadEVCR as u8);
     }
 
     #[test]
