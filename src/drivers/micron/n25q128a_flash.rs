@@ -168,6 +168,46 @@ struct Status {
     _write_enable_latch: bool,
 }
 
+// Enhanced Volatile Configuration Register
+struct EVCR([u8; 1]);
+
+impl Default for EVCR {
+    fn default() -> Self { Self([ 0b00000000 ]) }
+}
+
+impl AsRef<[u8]> for EVCR {
+    fn as_ref(&self) -> &[u8] { &self.0 }
+}
+
+impl AsMut<[u8]> for EVCR {
+    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+}
+
+impl EVCR {
+    const PROTOCOL_BITS_MASK : u8 = 0b11000000;
+    const PROTOCOL_BITS_SHIFT : u8 = 6;
+
+    pub fn protocol(&self) -> qspi::Mode {
+        match self.0[0] >> Self::PROTOCOL_BITS_SHIFT {
+            0b00 => qspi::Mode::Quad,
+            0b01 => qspi::Mode::Quad,
+            0b10 => qspi::Mode::Dual,
+            0b11 => qspi::Mode::Single,
+            _ => panic!(),
+        }
+    }
+
+    pub fn set_protocol(&mut self, mode: qspi::Mode) {
+        let bits = match mode {
+            qspi::Mode::Quad => 0b01,
+            qspi::Mode::Dual => 0b10,
+            qspi::Mode::Single => 0b11,
+        };
+        self.0[0] &= !Self::PROTOCOL_BITS_MASK;
+        self.0[0] |= bits << Self::PROTOCOL_BITS_SHIFT;
+    }
+}
+
 impl<QSPI, NOW> ReadWrite for MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
@@ -323,9 +363,45 @@ where
         Ok(flash)
     }
 
-    fn configure_qspi(qspi: &mut QSPI) {
-        let mut data = [0u8];
-        Self::execute_command(qspi, Command::ReadEVCR, None, qspi::Data::Read(&mut data));
+    fn read_evcr(qspi: &mut QSPI, mode: qspi::Mode) -> Result<EVCR, Error> {
+        let mut evcr = EVCR::default();
+        let mut command = qspi::QSPICommand::default()
+            .with_instruction(Command::ReadEVCR as u8)
+            .with_read_data(evcr.as_mut())
+            .with_mode(mode);
+        block!(qspi.execute_command(&mut command))
+            .map_err(|_| Error::QspiError)?;
+        Ok(evcr)
+    }
+
+    fn write_evcr(qspi: &mut QSPI, evcr: EVCR, mode: qspi::Mode) -> Result<(), Error> {
+        let mut command = qspi::QSPICommand::default()
+            .with_instruction(Command::WriteEVCR as u8)
+            .with_write_data(evcr.as_ref())
+            .with_mode(mode);
+        block!(qspi.execute_command(&mut command))
+            .map_err(|_| Error::QspiError)?;
+        Ok(())
+    }
+
+    fn configure_qspi(qspi: &mut QSPI) -> Result<(), Error> {
+        let evcr = Self::read_evcr(qspi, qspi.mode())?;
+        if evcr.protocol() == qspi.mode() {
+            return Ok(());
+        }
+
+        for &mode in &[
+            qspi::Mode::Single, qspi::Mode::Dual, qspi::Mode::Quad
+        ] {
+            let mut evcr = Self::read_evcr(qspi, mode)?;
+            if evcr.protocol() != mode { continue; }
+
+            evcr.set_protocol(qspi.mode());
+            Self::write_evcr(qspi, evcr, mode)?;
+            return Ok(());
+        }
+
+        return Err(Error::QspiError);
 
         // Read EVCR normally. If everything is fine, return.
         // Otherwise, try the following with Single, Dual and Quad modes:
