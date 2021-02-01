@@ -1,5 +1,5 @@
 /// QSPI mode used by QSPICommand to override configured mode.
-#[derive(Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Mode {
     Single,
     Dual,
