@@ -51,7 +51,7 @@ impl Indirect for MockQspi {
             data,
             length_requested,
             dummy_cycles: command.dummy_cycles(),
-            mode: self.mode,
+            mode: command.mode_override().unwrap_or(self.mode),
         });
 
         if let qspi::Data::Read(data) = command.data_mut() {
