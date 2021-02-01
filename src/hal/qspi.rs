@@ -55,7 +55,7 @@ impl<'a> QSPICommand<'a> {
         Self { data: Data::Read(data), ..self }
     }
 
-    pub fn with_write_data(self, data: &'a mut [u8]) -> Self {
+    pub fn with_write_data(self, data: &'a [u8]) -> Self {
         Self { data: Data::Write(data), ..self }
     }
 
