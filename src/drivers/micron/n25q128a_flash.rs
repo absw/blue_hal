@@ -159,6 +159,8 @@ enum Command {
     MultipleIOReadId = 0xAF,
     /// Read enhanced volatile configuration register
     ReadEVCR = 0x65,
+    /// Write enhanced volatile configuration register
+    WriteEVCR = 0x61,
 }
 
 struct Status {
@@ -309,19 +311,30 @@ where
 
     /// Blocks until flash ID read checks out, or until timeout
     pub fn new(mut qspi: QSPI) -> Result<Self, Error> {
-        let mut data = [0u8];
-        Self::execute_command(&mut qspi, Command::ReadEVCR, None, qspi::Data::Read(&mut data));
+        Self::configure_qspi(&mut qspi);
         let mut flash = Self { qspi, timeout: None, _marker: Default::default() };
         block!(flash.verify_id())?;
         Ok(flash)
     }
 
     pub fn with_timeout(mut qspi: QSPI, timeout: time::Milliseconds) -> Result<Self, Error> {
-        let mut data = [0u8];
-        Self::execute_command(&mut qspi, Command::ReadEVCR, None, qspi::Data::Read(&mut data));
+        Self::configure_qspi(&mut qspi);
         let mut flash = Self { qspi, timeout: Some(timeout), _marker: Default::default() };
         block!(flash.verify_id())?;
         Ok(flash)
+    }
+
+    fn configure_qspi(qspi: &mut QSPI) {
+        let mut data = [0u8];
+        Self::execute_command(qspi, Command::ReadEVCR, None, qspi::Data::Read(&mut data));
+
+        // Read EVCR normally. If everything is fine, return.
+        // Otherwise, try the following with Single, Dual and Quad modes:
+        //   Switch QSPI to that mode
+        //   Read EVCR
+        //   Check if the EVCR is configured for that mode
+        //   If so Reconfigure EVCR into the original mode and return
+        // If all that fails, panic!
     }
 
     fn erase_subsector(&mut self, subsector: &Subsector) -> nb::Result<(), Error> {
@@ -460,6 +473,34 @@ mod test {
                 .last().unwrap()
                 .instruction.unwrap();
             assert_eq!(actual_comand, expected_command as u8);
+        }
+    }
+
+    #[test]
+    fn initialisation_reconfigures_incorrect_evcr() {
+        // Given
+        let mut qspi = MockQspi::default();
+        qspi.mode = qspi::Mode::Dual;
+        const SINGLE_MODE_EVCR_CONTENT: u8 = 0b0001_1111;
+        qspi.to_read.push_back(vec![SINGLE_MODE_EVCR_CONTENT]);
+        qspi.to_read.push_back(vec![MANUFACTURER_ID]);
+
+        // When
+        let flash = FlashToTest::new(qspi)
+            .unwrap();
+
+        // Then
+        const EXPECTED_COMMANDS : [(Command, qspi::Mode); 4] = [
+            (Command::ReadEVCR, qspi::Mode::Dual), // Initial check
+            (Command::ReadEVCR, qspi::Mode::Single), // Checking single mode
+            (Command::WriteEVCR, qspi::Mode::Single), // Reconfiguring to dual mode
+            (Command::MultipleIOReadId, qspi::Mode::Dual), // Verifying manufacturer ID
+        ];
+
+        for (actual, (expected_command, expected_mode)) in flash.qspi.command_records.iter()
+            .zip(&EXPECTED_COMMANDS) {
+            assert_eq!(actual.mode, *expected_mode);
+            assert_eq!(actual.instruction.unwrap(), *expected_command as u8);
         }
     }
 
