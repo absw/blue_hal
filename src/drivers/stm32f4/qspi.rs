@@ -320,6 +320,12 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
         // Sets Data Length Register, configuring the amount of bytes to write.
         self.qspi.dlr.write(|w| unsafe { w.bits(data_length) });
 
+        let address_mode = if command.address().is_some() {
+            protocol_mode
+        } else {
+            0u8
+        };
+
         let (instruction_mode, instruction) = match command.instruction() {
             Some(i) => (PROTOCOL_SINGLE_MODE, i),
             None => (0x00, 0x00),
@@ -337,7 +343,7 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
             .adsize()
                 .bits(address_size)
             .admode()
-                .bits(protocol_mode)
+                .bits(address_mode)
             .imode()
                 .bits(instruction_mode)
             .instruction()
