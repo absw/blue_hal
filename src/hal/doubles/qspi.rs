@@ -8,6 +8,7 @@ pub struct CommandRecord {
     pub data: Option<Vec<u8>>,
     pub length_requested: usize,
     pub dummy_cycles: u8,
+    pub mode: qspi::Mode,
 }
 
 impl CommandRecord {
@@ -50,6 +51,7 @@ impl Indirect for MockQspi {
             data,
             length_requested,
             dummy_cycles: command.dummy_cycles(),
+            mode: self.mode,
         });
 
         if let qspi::Data::Read(data) = command.data_mut() {
