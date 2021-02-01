@@ -31,6 +31,10 @@ impl flash::ReadWrite for FakeFlash {
         }
     }
 
+    unsafe fn unlimited_write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
+        self.write(address, bytes)
+    }
+
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if address < self.base {
             Err(nb::Error::Other(FakeError))
@@ -67,4 +71,8 @@ impl Sub<Address> for Address {
 
 impl From<Address> for usize {
     fn from(address: Address) -> Self { address.0 as usize }
+}
+
+impl From<usize> for Address {
+    fn from(value: usize) -> Self { Self(value as u32) }
 }

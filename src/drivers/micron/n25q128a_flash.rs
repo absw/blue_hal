@@ -34,6 +34,10 @@ impl Into<usize> for Address {
     fn into(self) -> usize { self.0 as usize }
 }
 
+impl From<usize> for Address {
+    fn from(value: usize) -> Self { Self(value as u32) }
+}
+
 pub struct MemoryMap {}
 pub struct Sector(usize);
 pub struct Subsector(usize);
@@ -219,6 +223,10 @@ where
             }
         }
         Ok(())
+    }
+
+    unsafe fn unlimited_write(&mut self, _address: Self::Address, _bytes: &[u8]) -> nb::Result<(), Self::Error> {
+        unimplemented!();
     }
 
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {

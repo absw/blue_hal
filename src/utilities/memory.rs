@@ -25,6 +25,7 @@ pub trait Address:
     + core::ops::Sub<usize, Output = Self>
     + core::ops::Sub<Self, Output = usize>
     + Into<usize>
+    + From<usize>
 {
 }
 
@@ -36,6 +37,7 @@ impl<A> Address for A where
         + core::ops::Sub<usize, Output = Self>
         + core::ops::Sub<Self, Output = usize>
         + Into<usize>
+        + From<usize>
 {
 }
 

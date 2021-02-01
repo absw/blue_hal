@@ -10,6 +10,7 @@ pub trait ReadWrite {
     type Address: Address;
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;
+    unsafe fn unlimited_write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;
     fn range(&self) -> (Self::Address, Self::Address);
     fn erase(&mut self) -> nb::Result<(), Self::Error>;
     fn bytes(&mut self, address: Self::Address) -> ReadIterator<Self> {

@@ -42,6 +42,10 @@ impl Into<usize> for Address {
     fn into(self) -> usize { self.0 as usize }
 }
 
+impl From<usize> for Address {
+    fn from(value: usize) -> Self { Self(value as u32) }
+}
+
 #[derive(Copy, Clone, Debug)]
 struct Range(Address, Address);
 
@@ -281,35 +285,11 @@ impl McuFlash {
         self.lock();
         Ok(())
     }
-}
 
-impl ReadWrite for McuFlash {
-    type Error = Error;
-    type Address = Address;
-
-    fn range(&self) -> (Address, Address) {
-        (MemoryMap::writable_start(), MemoryMap::writable_end())
-    }
-
-    // NOTE: This only erases the sections of the MCU flash that are writable
-    // from the application's perspective. Not the reserved sector, system bytes, etc.
-    fn erase(&mut self) -> nb::Result<(), Self::Error> {
-        for sector in MEMORY_MAP.sectors.iter().filter(|s| s.is_writable()) {
-            self.erase(sector)?;
-        }
-        Ok(())
-    }
-
-    fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
+    fn write_inner(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), <Self as ReadWrite>::Error> {
         if address.0 % 4 != 0 {
             return Err(nb::Error::Other(Error::MisalignedAccess));
         }
-
-        let range = Range(address, Address(address.0 + bytes.len() as u32));
-        if !range.is_writable() {
-            return Err(nb::Error::Other(Error::MemoryNotReachable));
-        }
-
         // Early yield if busy
         if self.is_busy() {
             return Err(nb::Error::WouldBlock);
@@ -337,6 +317,38 @@ impl ReadWrite for McuFlash {
         }
 
         Ok(())
+    }
+}
+
+impl ReadWrite for McuFlash {
+    type Error = Error;
+    type Address = Address;
+
+    fn range(&self) -> (Address, Address) {
+        (MemoryMap::writable_start(), MemoryMap::writable_end())
+    }
+
+    // NOTE: This only erases the sections of the MCU flash that are writable
+    // from the application's perspective. Not the reserved sector, system bytes, etc.
+    fn erase(&mut self) -> nb::Result<(), Self::Error> {
+        for sector in MEMORY_MAP.sectors.iter().filter(|s| s.is_writable()) {
+            self.erase(sector)?;
+        }
+        Ok(())
+    }
+
+    unsafe fn unlimited_write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
+        self.write_inner(address, bytes)
+    }
+
+
+    fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
+        let range = Range(address, Address(address.0 + bytes.len() as u32));
+        if !range.is_writable() {
+            return Err(nb::Error::Other(Error::MemoryNotReachable));
+        }
+
+        self.write_inner(address, bytes)
     }
 
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
