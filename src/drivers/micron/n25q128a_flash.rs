@@ -309,12 +309,16 @@ where
 
     /// Blocks until flash ID read checks out, or until timeout
     pub fn new(mut qspi: QSPI) -> Result<Self, Error> {
+        let mut data = [0u8];
+        Self::execute_command(&mut qspi, Command::ReadEVCR, None, qspi::Data::Read(&mut data));
         let mut flash = Self { qspi, timeout: None, _marker: Default::default() };
         block!(flash.verify_id())?;
         Ok(flash)
     }
 
     pub fn with_timeout(mut qspi: QSPI, timeout: time::Milliseconds) -> Result<Self, Error> {
+        let mut data = [0u8];
+        Self::execute_command(&mut qspi, Command::ReadEVCR, None, qspi::Data::Read(&mut data));
         let mut flash = Self { qspi, timeout: Some(timeout), _marker: Default::default() };
         block!(flash.verify_id())?;
         Ok(flash)
