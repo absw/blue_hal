@@ -74,6 +74,11 @@ impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> UntilSequenceIterator<'a, T, 
             Some(self.sequence[self.head -1])
         }
     }
+
+    pub fn contains_sequence(mut self) -> bool {
+        while let Some(_) = self.next() {}
+        self.tail == self.sequence.len()
+    }
 }
 
 #[cfg(test)]
@@ -95,6 +100,7 @@ mod test {
 
         let expected = vec![3, 4, 1, 5];
         assert_eq!(expected, values.iter().cloned().until_sequence(&sequence).collect::<Vec<u8>>());
+        assert!(values.iter().cloned().until_sequence(&sequence).contains_sequence());
     }
 
     #[test]
