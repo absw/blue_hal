@@ -1,6 +1,6 @@
 //! USART implementation.
 use crate::{
-    drivers::stm32f4::{gpio::*, rcc, systick},
+    drivers::stm32f4::{rcc, systick},
     hal::{
         serial,
         time::{Milliseconds, Now},
@@ -24,61 +24,59 @@ pub trait UsartExt<PINS> {
     ) -> Result<Self::Serial, config::InvalidConfig>;
 }
 
-mod private {
-    #[doc(hidden)]
-    pub trait Sealed {}
-}
-
 /// Sealed trait for all pins that can be TX for each USART.
 /// This can't be implemented by the library user: All available
 /// pins should already be implemented internally.
-pub unsafe trait TxPin<USART>: private::Sealed {}
+pub unsafe trait TxPin<USART> {}
 
 /// Sealed trait for all pins that can be RX for each USART.
 /// This can't be implemented by the library user: All available
 /// pins should already be implemented internally.
-pub unsafe trait RxPin<USART>: private::Sealed {}
+pub unsafe trait RxPin<USART> {}
 
+#[allow(unused)]
 macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
     $(
         unsafe impl $function for $pin {}
-        impl private::Sealed for $pin {}
     )+
 };}
 
-// List of all pins capable of being configured as certain USART
-// functions. NOTE: This is not configuration! there's no need
-// to remove items from these lists once complete.
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
-seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>,]);
-#[cfg(any(feature = "stm32f412"))]
-seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>, Pa15<AF6>,]);
+#[macro_export(local_inner_macros)]
+macro_rules! enable_serial { () => {
+    // List of all pins capable of being configured as certain USART
+    // functions. NOTE: This is not configuration! there's no need
+    // to remove items from these lists once complete.
+    #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+    seal_pins!(TxPin<blue_hal::stm32pac::USART1>: [Pa9<AF7>, Pb6<AF7>,]);
+    #[cfg(any(feature = "stm32f412"))]
+    seal_pins!(TxPin<blue_hal::stm32pac::USART1>: [Pa9<AF7>, Pb6<AF7>, Pa15<AF6>,]);
 
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
-seal_pins!(RxPin<USART1>: [Pb7<AF7>, Pa10<AF7>,]);
-#[cfg(any(feature = "stm32f412"))]
-seal_pins!(RxPin<USART1>: [Pb3<AF7>, Pb7<AF7>, Pa10<AF7>,]);
+    #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+    seal_pins!(RxPin<blue_hal::stm32pac::USART1>: [Pb7<AF7>, Pa10<AF7>,]);
+    #[cfg(any(feature = "stm32f412"))]
+    seal_pins!(RxPin<blue_hal::stm32pac::USART1>: [Pb3<AF7>, Pb7<AF7>, Pa10<AF7>,]);
 
-#[cfg(any(
-    feature = "stm32f469",
-    feature = "stm32f429",
-    feature = "stm32f407",
-    feature = "stm32f412"
-))]
-seal_pins!(TxPin<USART2>: [Pa2<AF7>, Pd5<AF7>,]);
+    #[cfg(any(
+        feature = "stm32f469",
+        feature = "stm32f429",
+        feature = "stm32f407",
+        feature = "stm32f412"
+    ))]
+    seal_pins!(TxPin<blue_hal::stm32pac::USART2>: [Pa2<AF7>, Pd5<AF7>,]);
 
-#[cfg(any(
-    feature = "stm32f469",
-    feature = "stm32f429",
-    feature = "stm32f407",
-    feature = "stm32f412"
-))]
-seal_pins!(RxPin<USART2>: [Pa3<AF7>, Pd6<AF7>,]);
+    #[cfg(any(
+        feature = "stm32f469",
+        feature = "stm32f429",
+        feature = "stm32f407",
+        feature = "stm32f412"
+    ))]
+    seal_pins!(RxPin<blue_hal::stm32pac::USART2>: [Pa3<AF7>, Pd6<AF7>,]);
 
-#[cfg(any(feature = "stm32f412"))]
-seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pa11<AF8>, Pg14<AF8>,]);
-#[cfg(any(feature = "stm32f412"))]
-seal_pins!(RxPin<USART6>: [Pc7<AF8>, Pa12<AF8>, Pg9<AF8>,]);
+    #[cfg(any(feature = "stm32f412"))]
+    seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pa11<AF8>, Pg14<AF8>,]);
+    #[cfg(any(feature = "stm32f412"))]
+    seal_pins!(RxPin<USART6>: [Pc7<AF8>, Pa12<AF8>, Pg9<AF8>,]);
+}}
 
 /// Serial error
 #[derive(Debug, Copy, Clone, Format)]
