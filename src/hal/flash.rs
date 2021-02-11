@@ -111,7 +111,7 @@ mod tests {
             expected_bytes.push(i as u8);
         }
         let mut flash = FakeFlash::new(Address(0));
-        flash.write(Address(0), expected_bytes.as_slice());
+        flash.write(Address(0), expected_bytes.as_slice()).unwrap();
         let bytes: Vec<u8> = flash.bytes(Address(0)).take(10000).collect();
         assert_eq!(expected_bytes, bytes);
     }

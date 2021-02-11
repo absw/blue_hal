@@ -153,9 +153,9 @@ enum Command {
     WriteDisable = 0x04,
     ReadStatus = 0x05,
     WriteEnable = 0x06,
-    SubsectorErase = 0x20,
     ReadId = 0x9E,
     BulkErase = 0xC7,
+    SectorErase = 0xD8,
 }
 
 struct Status {
@@ -195,24 +195,24 @@ where
             return Err(nb::Error::WouldBlock);
         }
 
-        for (bytes, subsector, address) in MemoryMap::subsectors().overlaps(bytes, address) {
-            let offset_into_subsector = address - subsector.location();
-            let mut subsector_data = [0x00u8; SUBSECTOR_SIZE];
-            block!(self.read(subsector.location(), &mut subsector_data))?;
-            if bytes.is_subset_of(&subsector_data[offset_into_subsector..]) {
-                for (bytes, page, address) in subsector.pages().overlaps(bytes, address) {
+        for (bytes, sector, address) in MemoryMap::sectors().overlaps(bytes, address) {
+            let offset_into_sector = address - sector.location();
+            let mut sector_data = [0x00u8; SECTOR_SIZE];
+            block!(self.read(sector.location(), &mut sector_data))?;
+            if bytes.is_subset_of(&sector_data[offset_into_sector..]) {
+                for (bytes, page, address) in sector.pages().overlaps(bytes, address) {
                     block!(self.write_page(&page, bytes, address))?;
                 }
             } else {
-                block!(self.erase_subsector(&subsector))?;
+                block!(self.erase_sector(&sector))?;
                 // "merge" the preexisting data with the new write.
-                subsector_data
+                sector_data
                     .iter_mut()
-                    .skip(offset_into_subsector)
+                    .skip(offset_into_sector)
                     .zip(bytes)
                     .for_each(|(a, b)| *a = *b);
                 for (bytes, page, address) in
-                    subsector.pages().overlaps(&subsector_data, subsector.location())
+                    sector.pages().overlaps(&sector_data, sector.location())
                 {
                     block!(self.write_page(&page, bytes, address))?;
                 }
@@ -317,7 +317,7 @@ where
         Ok(flash)
     }
 
-    fn erase_subsector(&mut self, subsector: &Subsector) -> nb::Result<(), Error> {
+    fn erase_sector(&mut self, sector: &Sector) -> nb::Result<(), Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {
             return Err(nb::Error::WouldBlock);
         }
@@ -329,8 +329,8 @@ where
         ))?;
         block!(Self::execute_command(
             &mut self.qspi,
-            Command::SubsectorErase,
-            Some(subsector.location()),
+            Command::SectorErase,
+            Some(sector.location()),
             CommandData::None
         ))?;
         Ok(block!(self.wait_until_write_complete())?)
@@ -365,9 +365,6 @@ mod test {
     use super::*;
     use crate::hal::doubles::{gpio::*, qspi::*, time::*};
     use std::collections::VecDeque;
-
-    const NOT_BUSY: u8 = 0x0u8;
-    const COMMANDS_PER_PAGE_WRITE: usize = 4;
 
     type FlashToTest = MicronN25q128a<MockQspi, MockSysTick>;
     fn flash_to_test() -> FlashToTest {
@@ -489,148 +486,5 @@ mod test {
         assert_eq!(records[1].instruction, Some(Command::Read as u8));
         assert_eq!(Some(address.0), records[1].address);
         assert_eq!(SUBSECTOR_SIZE, records[1].length_requested);
-    }
-
-    #[test]
-    fn writing_a_bitwise_subset_of_a_subsector() {
-        // Given
-        let mut flash = flash_to_test();
-        let data_to_write = [0xAA, 0xBB, 0xAA, 0xBB];
-        let subsector = MemoryMap::subsectors().nth(12).unwrap();
-        let page = subsector.pages().nth(3).unwrap();
-
-        flash.qspi.to_read = VecDeque::from(vec![
-            vec![NOT_BUSY],             // Response to busy check when calling write
-            vec![NOT_BUSY],             // Response to busy check when calling first read
-            vec![0xFF; SUBSECTOR_SIZE], //sector data (for pre-write check)
-        ]);
-
-        // When
-        flash.write(page.location(), &data_to_write).unwrap();
-        let records = &flash.qspi.command_records;
-
-        // Then we read the sector to verify we are a subset
-        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[1].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[2].instruction, Some(Command::Read as u8));
-        assert_eq!(Some(subsector.location().0), records[2].address);
-        assert_eq!(SUBSECTOR_SIZE, records[2].length_requested);
-        records[1].contains(&[0xFF; SUBSECTOR_SIZE]);
-
-        // And we are a subset, so we simply write the data
-        assert_eq!(records[3].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[4].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(records[5].instruction, Some(Command::PageProgram as u8));
-        assert_eq!(Some(page.location().0), records[5].address);
-        assert!(records[5].contains(&data_to_write));
-    }
-
-    fn wrote_a_whole_subsector(data: &[u8], address: Address, commands: &[CommandRecord]) -> bool {
-        (0..PAGES_PER_SUBSECTOR).map(|i| (i, i * COMMANDS_PER_PAGE_WRITE)).all(|(page, i)| {
-            commands[i].instruction == Some(Command::ReadStatus as u8)
-                && commands[i + 1].instruction == Some(Command::WriteEnable as u8)
-                && commands[i + 2].instruction == Some(Command::PageProgram as u8)
-                && commands[i + 2].address == Some((address + page * PAGE_SIZE).0)
-                && commands[i + 2].contains(&data[page * PAGE_SIZE..(page + 1) * PAGE_SIZE])
-                && commands[i + 3].instruction == Some(Command::ReadStatus as u8)
-        })
-    }
-
-    #[test]
-    fn writing_a_whole_subsector_page_by_page() {
-        // Given
-        let mut flash = flash_to_test();
-        let data_to_write = [0x00; SUBSECTOR_SIZE];
-        let subsector = MemoryMap::subsectors().nth(12).unwrap();
-
-        // When
-        flash.write(subsector.location(), &data_to_write).unwrap();
-        let records = &flash.qspi.command_records;
-
-        // Then we read the subsector to verify we are a subset of it
-        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[1].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[2].instruction, Some(Command::Read as u8));
-
-        // And we write the whole thing page by page
-        assert!(wrote_a_whole_subsector(&data_to_write, subsector.location(), &records[3..]));
-    }
-
-    #[test]
-    fn writing_a_non_bitwise_subset_of_a_subsector() {
-        // Given
-        let mut flash = flash_to_test();
-        let data_to_write = [0xAA, 0xBB, 0xAA, 0xBB];
-        let subsector = MemoryMap::subsectors().nth(12).unwrap();
-        let page = subsector.pages().nth(3).unwrap();
-        let original_subsector_data = vec![0x11u8; SUBSECTOR_SIZE];
-        let mut merged_data = original_subsector_data.clone();
-        merged_data
-            .iter_mut()
-            .skip(page.location() - subsector.location())
-            .zip(data_to_write.iter())
-            .for_each(|(a, b)| *a = *b);
-
-        flash.qspi.to_read = VecDeque::from(vec![
-            vec![NOT_BUSY],          // Response to busy check when calling write
-            vec![NOT_BUSY],          // Response to busy check when calling first read
-            original_subsector_data, //sector data (for pre-write check). Not a superset!
-        ]);
-
-        // When
-        flash.write(page.location(), &data_to_write).unwrap();
-        let records = &flash.qspi.command_records;
-        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
-
-        // Then we read the sector to verify we are a subset
-        assert_eq!(records[1].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[2].instruction, Some(Command::Read as u8));
-        assert_eq!(Some(subsector.location().0), records[2].address);
-        assert_eq!(SUBSECTOR_SIZE, records[2].length_requested);
-        records[1].contains(&[0x11; SUBSECTOR_SIZE]);
-
-        // And we are not a subset, so we erase first
-        assert_eq!(records[3].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[4].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(records[5].instruction, Some(Command::SubsectorErase as u8));
-        assert_eq!(Some(subsector.location().0), records[5].address);
-        assert_eq!(records[6].instruction, Some(Command::ReadStatus as u8));
-
-        // And then we write the "merged" data back, page per page
-        assert!(wrote_a_whole_subsector(&merged_data, subsector.location(), &records[7..]));
-    }
-
-    #[test]
-    fn write_straddling_two_subsectors() {
-        // Given
-        let mut flash = flash_to_test();
-        let data_to_write = [0x00u8; 2 * SUBSECTOR_SIZE];
-        let address = MemoryMap::subsectors().nth(1).unwrap().location();
-
-        // When
-        flash.write(address, &data_to_write).unwrap();
-        let records = &flash.qspi.command_records;
-
-        // Then
-        // First subsector subset check
-        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[1].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[2].instruction, Some(Command::Read as u8));
-
-        // And first subsector write
-        assert!(wrote_a_whole_subsector(&data_to_write[..SUBSECTOR_SIZE], address, &records[3..]));
-
-        let index = 3 + COMMANDS_PER_PAGE_WRITE * PAGES_PER_SUBSECTOR;
-
-        // second subsector subset check
-        assert_eq!(records[index].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(records[index + 1].instruction, Some(Command::Read as u8));
-
-        // And second subsector write
-        assert!(wrote_a_whole_subsector(
-            &data_to_write[SUBSECTOR_SIZE..],
-            address + SUBSECTOR_SIZE,
-            &records[index + 2..]
-        ));
     }
 }
