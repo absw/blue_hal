@@ -16,11 +16,11 @@ impl<T: Clone + Iterator<Item = I>, I: PartialEq> Unique for T {
 }
 
 /// Iterates until a sequence is reached (stops before it)
-pub trait UntilSequence<T>: Iterator<Item=T> + Sized {
+pub trait UntilSequence<T>: Iterator<Item = T> + Sized {
     fn until_sequence(self, sequence: &[T]) -> UntilSequenceIterator<T, Self>;
 }
 
-pub struct UntilSequenceIterator<'a, T, I: Iterator<Item=T>> {
+pub struct UntilSequenceIterator<'a, T, I: Iterator<Item = T>> {
     inner: I,
     sequence: &'a [T],
     head: usize,
@@ -28,13 +28,13 @@ pub struct UntilSequenceIterator<'a, T, I: Iterator<Item=T>> {
     divergent: Option<T>, // First value that diverges from the sequence
 }
 
-impl<'a, T, I: Iterator<Item=T>> UntilSequence<T> for I {
+impl<'a, T, I: Iterator<Item = T>> UntilSequence<T> for I {
     fn until_sequence(self, sequence: &[T]) -> UntilSequenceIterator<T, Self> {
         UntilSequenceIterator { inner: self, sequence, head: 0, tail: 0, divergent: None }
     }
 }
 
-impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> Iterator for UntilSequenceIterator<'a, T, I> {
+impl<'a, T: Copy + PartialEq, I: Iterator<Item = T>> Iterator for UntilSequenceIterator<'a, T, I> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -59,7 +59,7 @@ impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> Iterator for UntilSequenceIte
     }
 }
 
-impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> UntilSequenceIterator<'a, T, I> {
+impl<'a, T: Copy + PartialEq, I: Iterator<Item = T>> UntilSequenceIterator<'a, T, I> {
     // Each call to this function yields one element from the sequence until
     // reaching the divergent. It then yields the divergent and clears it.
     // If there is no divergent, simply yields the sequence until fully consumed.
@@ -71,7 +71,7 @@ impl<'a, T: Copy + PartialEq, I: Iterator<Item=T>> UntilSequenceIterator<'a, T, 
             divergent
         } else {
             self.head += 1;
-            Some(self.sequence[self.head -1])
+            Some(self.sequence[self.head - 1])
         }
     }
 

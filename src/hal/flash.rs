@@ -21,6 +21,12 @@ pub trait ReadWrite {
             buffer_head: ITERATOR_BUFFER_SIZE,
         }
     }
+
+    fn write_from_blocks<I: Iterator<Item = [u8; N]>, const N: usize>(
+        &mut self,
+        address: Self::Address,
+        blocks: I,
+    ) -> Result<(), Self::Error>;
 }
 
 pub trait UnportableSerialize: ReadWrite {
@@ -81,7 +87,7 @@ impl<'a, R: ReadWrite + ?Sized> Iterator for ReadIterator<'a, R> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.errored {
-            return None
+            return None;
         }
 
         if self.buffer_head == ITERATOR_BUFFER_SIZE {
