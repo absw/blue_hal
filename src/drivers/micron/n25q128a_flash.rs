@@ -221,6 +221,32 @@ where
         Ok(())
     }
 
+    fn write_from_blocks<I: Iterator<Item = [u8; N]>, const N: usize>(
+        &mut self,
+        address: Self::Address,
+        blocks: I,
+    ) -> Result<(), Self::Error> {
+        assert!(SECTOR_SIZE % N == 0);
+        let mut transfer_array = [0x00u8; SECTOR_SIZE];
+        let mut memory_index = 0usize;
+
+        for block in blocks {
+            let slice = &mut transfer_array[
+                (memory_index % SECTOR_SIZE)
+                ..((memory_index % SECTOR_SIZE) + N)];
+            slice.clone_from_slice(&block);
+            memory_index += N;
+
+            if memory_index % SECTOR_SIZE == 0 {
+                nb::block!(self.write(address + (memory_index - SECTOR_SIZE), &transfer_array))?;
+                transfer_array.iter_mut().for_each(|b| *b = 0x00u8);
+            }
+        }
+        let remainder = &transfer_array[0..(memory_index % SECTOR_SIZE)];
+        nb::block!(self.write(address + (memory_index - remainder.len()), &remainder))?;
+        Ok(())
+    }
+
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)

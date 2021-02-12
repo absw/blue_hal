@@ -48,6 +48,14 @@ impl flash::ReadWrite for FakeFlash {
         self.data.clear();
         Ok(())
     }
+
+    fn write_from_blocks<I: Iterator<Item = [u8; N]>, const N: usize>(
+        &mut self,
+        _address: Self::Address,
+        _blocks: I,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
 }
 
 impl Add<usize> for Address {
