@@ -1,3 +1,6 @@
+//! Generic iterator utilities.
+
+/// Verify that all elements of an iterator are unique.
 pub trait Unique {
     fn all_unique(self) -> bool;
 }

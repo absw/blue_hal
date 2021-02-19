@@ -29,6 +29,7 @@ pub trait ReadWrite {
     ) -> Result<(), Self::Error>;
 }
 
+/// Serialize an object to flash.
 pub trait UnportableSerialize: ReadWrite {
     /// # Safety
     ///
@@ -49,6 +50,7 @@ pub trait UnportableSerialize: ReadWrite {
 }
 impl<F: ReadWrite> UnportableSerialize for F {}
 
+/// Deserialize an object from flash.
 pub trait UnportableDeserialize: ReadWrite {
     /// # Safety
     ///
