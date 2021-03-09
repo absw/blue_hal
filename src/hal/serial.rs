@@ -105,8 +105,8 @@ macro_rules! uprintln {
 macro_rules! duprintln {
     ($serial:expr, $($arg:tt)+) => {
         {
-            defmt::info!($($arg)+);
             let _ = uwriteln!($serial, $($arg)+ );
+            defmt::info!($($arg)+);
         }
     };
 }

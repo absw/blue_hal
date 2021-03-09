@@ -261,6 +261,7 @@ where
     }
 
     fn range(&self) -> (Address, Address) { (MemoryMap::location(), MemoryMap::end()) }
+    fn label() -> &'static str { "Micron n25q128a (External)" }
 }
 
 impl<QSPI, NOW> MicronN25q128a<QSPI, NOW>

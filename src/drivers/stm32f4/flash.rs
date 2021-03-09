@@ -359,26 +359,29 @@ impl ReadWrite for McuFlash {
         address: Self::Address,
         blocks: I,
     ) -> Result<(), Self::Error> {
-        assert!(max_sector_size() % N == 0);
-        let mut transfer_array = [0x00u8; max_sector_size()];
+        const TRANSFER_SIZE: usize = KB!(4);
+        assert!(TRANSFER_SIZE % N == 0);
+        let mut transfer_array = [0x00u8; TRANSFER_SIZE];
         let mut memory_index = 0usize;
 
         for block in blocks {
             let slice = &mut transfer_array[
-                (memory_index % max_sector_size())
-                ..((memory_index % max_sector_size()) + N)];
+                (memory_index % TRANSFER_SIZE)
+                ..((memory_index % TRANSFER_SIZE) + N)];
             slice.clone_from_slice(&block);
             memory_index += N;
 
-            if memory_index % max_sector_size() == 0 {
-                nb::block!(self.write(address + (memory_index - max_sector_size()), &transfer_array))?;
+            if memory_index % TRANSFER_SIZE == 0 {
+                nb::block!(self.write(address + (memory_index - TRANSFER_SIZE), &transfer_array))?;
                 transfer_array.iter_mut().for_each(|b| *b = 0x00u8);
             }
         }
-        let remainder = &transfer_array[0..(memory_index % max_sector_size())];
+        let remainder = &transfer_array[0..(memory_index % TRANSFER_SIZE)];
         nb::block!(self.write(address + (memory_index - remainder.len()), &remainder))?;
         Ok(())
     }
+
+    fn label() -> &'static str { "stm32f4 flash (Internal)" }
 }
 
 #[cfg(test)]
