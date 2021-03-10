@@ -56,6 +56,8 @@ impl flash::ReadWrite for FakeFlash {
     ) -> Result<(), Self::Error> {
         todo!()
     }
+
+    fn label() -> &'static str { "Fake Flash" }
 }
 
 impl Add<usize> for Address {

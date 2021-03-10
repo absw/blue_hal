@@ -1,6 +1,8 @@
 //! Utilities to manipulate generic memory
 #![macro_use]
 
+use marker_blanket::marker_blanket;
+
 #[macro_export]
 macro_rules! KB {
     ($val:expr) => {
@@ -17,6 +19,7 @@ macro_rules! MB {
 /// Generic address for the purpose of this module's methods.
 /// Anything that can be offset by a usize and yield another
 /// address works as an address.
+#[marker_blanket]
 pub trait Address:
     'static
     + Ord
@@ -25,17 +28,6 @@ pub trait Address:
     + core::ops::Sub<usize, Output = Self>
     + core::ops::Sub<Self, Output = usize>
     + Into<usize>
-{
-}
-
-impl<A> Address for A where
-    A: 'static
-        + Ord
-        + Copy
-        + core::ops::Add<usize, Output = Self>
-        + core::ops::Sub<usize, Output = Self>
-        + core::ops::Sub<Self, Output = usize>
-        + Into<usize>
 {
 }
 

@@ -6,8 +6,11 @@ use core::{
 
 /// Reads and writes a range of bytes, generic over an address
 pub trait ReadWrite {
-    type Error: Clone + Copy;
+    type Error: Clone + Copy + Copy;
     type Address: Address;
+
+    /// An identifying name for the flash chip.
+    fn label() -> &'static str;
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;
     fn range(&self) -> (Self::Address, Self::Address);
