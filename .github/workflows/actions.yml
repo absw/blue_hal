@@ -22,4 +22,4 @@ jobs:
         run: ~/.cargo/bin/cargo doc
 
       - name: Tests
-        run: ~/.cargo/bin/cargo test --release
+        run: ~/.cargo/bin/cargo test
