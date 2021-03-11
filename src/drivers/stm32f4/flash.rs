@@ -341,9 +341,7 @@ impl ReadWrite for McuFlash {
 
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         let range = Range(address, Address(address.0 + bytes.len() as u32));
-        if address.0 % 4 != 0 {
-            Err(nb::Error::Other(Error::MisalignedAccess))
-        } else if !range.is_writable() {
+        if !range.is_writable() {
             Err(nb::Error::Other(Error::MemoryNotReachable))
         } else {
             let base = address.0 as *const u8;
@@ -355,6 +353,35 @@ impl ReadWrite for McuFlash {
             Ok(())
         }
     }
+
+    fn write_from_blocks<I: Iterator<Item = [u8; N]>, const N: usize>(
+        &mut self,
+        address: Self::Address,
+        blocks: I,
+    ) -> Result<(), Self::Error> {
+        const TRANSFER_SIZE: usize = KB!(4);
+        assert!(TRANSFER_SIZE % N == 0);
+        let mut transfer_array = [0x00u8; TRANSFER_SIZE];
+        let mut memory_index = 0usize;
+
+        for block in blocks {
+            let slice = &mut transfer_array[
+                (memory_index % TRANSFER_SIZE)
+                ..((memory_index % TRANSFER_SIZE) + N)];
+            slice.clone_from_slice(&block);
+            memory_index += N;
+
+            if memory_index % TRANSFER_SIZE == 0 {
+                nb::block!(self.write(address + (memory_index - TRANSFER_SIZE), &transfer_array))?;
+                transfer_array.iter_mut().for_each(|b| *b = 0x00u8);
+            }
+        }
+        let remainder = &transfer_array[0..(memory_index % TRANSFER_SIZE)];
+        nb::block!(self.write(address + (memory_index - remainder.len()), &remainder))?;
+        Ok(())
+    }
+
+    fn label() -> &'static str { "stm32f4 flash (Internal)" }
 }
 
 #[cfg(test)]

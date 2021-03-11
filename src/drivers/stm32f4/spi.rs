@@ -1,40 +1,36 @@
 use crate::{
-    drivers::stm32f4::gpio::*,
     hal::spi::FullDuplex,
     stm32pac::{RCC, SPI1},
 };
 use core::{marker::PhantomData, mem::size_of};
 
 const BAUD_RATE_DIVIDER: u8 = 4;
-pub type SpiAf = AF5;
-
-mod private {
-    #[doc(hidden)]
-    pub trait Sealed {}
-}
 
 /// Sealed trait for all SPI capable pins.
-pub unsafe trait MisoPin<SPI>: private::Sealed {}
-pub unsafe trait MosiPin<SPI>: private::Sealed {}
-pub unsafe trait SckPin<SPI>: private::Sealed {}
-pub unsafe trait NssPin<SPI>: private::Sealed {}
+pub unsafe trait MisoPin<SPI> {}
+pub unsafe trait MosiPin<SPI> {}
+pub unsafe trait SckPin<SPI> {}
+pub unsafe trait NssPin<SPI> {}
 
 #[allow(unused)]
 macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
     $(
         unsafe impl $function for $pin {}
-        impl private::Sealed for $pin {}
     )+
 };}
 
-#[cfg(feature = "stm32f412")]
-seal_pins!(NssPin<SPI1>: [Pa4<SpiAf>, Pa15<SpiAf>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(SckPin<SPI1>: [Pa5<SpiAf>, Pb3<SpiAf>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(MisoPin<SPI1>: [Pa6<SpiAf>, Pb4<SpiAf>,]);
-#[cfg(feature = "stm32f412")]
-seal_pins!(MosiPin<SPI1>: [Pa7<SpiAf>, Pb5<SpiAf>,]);
+#[macro_export(local_inner_macros)]
+macro_rules! enable_spi { () => {
+    pub type SpiAf = AF5;
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::spi::NssPin<blue_hal::stm32pac::SPI1>: [Pa4<SpiAf>, Pa15<SpiAf>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::spi::SckPin<blue_hal::stm32pac::SPI1>: [Pa5<SpiAf>, Pb3<SpiAf>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::spi::MisoPin<blue_hal::stm32pac::SPI1>: [Pa6<SpiAf>, Pb4<SpiAf>,]);
+    #[cfg(feature = "stm32f412")]
+    seal_pins!(blue_hal::drivers::stm32f4::spi::MosiPin<blue_hal::stm32pac::SPI1>: [Pa7<SpiAf>, Pb5<SpiAf>,]);
+}}
 
 /// Marker trait for a tuple of pins that work for a given SPI.
 pub trait Pins<SPI> {}
