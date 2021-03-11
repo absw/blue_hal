@@ -19,7 +19,7 @@ jobs:
           ~/.cargo/bin/rustup update
 
       - name: Documentation
-        run: ~/.cargo/bin/cargo doc
+        run: ~/.cargo/bin/cargo doc --no-deps
 
       - name: Tests
         run: ~/.cargo/bin/cargo test
