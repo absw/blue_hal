@@ -10,7 +10,7 @@ version = "0.1.0"
 
 [features]
 default = [
-   "stm32f412_discovery",
+   "wgm160p",
    "defmt-default",
 ]
 stm32f412_discovery = ["stm32f412"]
@@ -21,6 +21,8 @@ stm32f412 = ["stm32f4/stm32f412", "stm32f4_any"]
 stm32f4_any = ["stm32_any"]
 stm32_any = ["cortex_m_any"]
 cortex_m_any = []
+wgm160p = ["efm32gg11b_any"]
+efm32gg11b_any = ["efm32gg11b"]
 
 defmt-default = []
 defmt-trace = []
@@ -53,7 +55,13 @@ version = "1.8.1"
 default-features = false
 
 [dependencies.stm32f4]
+optional = true
 version = "0.12.1"
+features = ["rt"]
+
+[dependencies.efm32gg11b]
+optional = true
+git = "https://github.com/pablo-mansanet-bluefruit/efm32gg11b-hal.git"
 features = ["rt"]
 
 [lib]

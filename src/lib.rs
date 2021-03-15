@@ -16,6 +16,9 @@ pub use stm32f4::stm32f429 as stm32pac;
 #[cfg(feature = "stm32f469")]
 pub use stm32f4::stm32f469 as stm32pac;
 
+#[cfg(feature = "efm32gg11b_any")]
+pub use efm32gg11b as efm32pac;
+
 #[macro_use]
 pub mod utilities {
     pub mod bitwise;
@@ -24,6 +27,7 @@ pub mod utilities {
     pub mod guard;
     pub mod buffer;
     pub mod xmodem;
+    pub mod safety;
     mod macros;
 }
 

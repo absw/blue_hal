@@ -60,3 +60,14 @@ macro_rules! port {
         )+
     };
 }
+
+#[macro_export]
+macro_rules! structs {
+    ($($struct:ident)+) => {
+        $(struct $struct; )+
+    };
+    ($($struct:ident)+, implementing $trait:ident) => {
+        pub trait $trait {}
+        $(struct $struct; impl $trait for $struct {})+
+    };
+}

@@ -365,9 +365,8 @@ impl ReadWrite for McuFlash {
         let mut memory_index = 0usize;
 
         for block in blocks {
-            let slice = &mut transfer_array[
-                (memory_index % TRANSFER_SIZE)
-                ..((memory_index % TRANSFER_SIZE) + N)];
+            let slice = &mut transfer_array
+                [(memory_index % TRANSFER_SIZE)..((memory_index % TRANSFER_SIZE) + N)];
             slice.clone_from_slice(&block);
             memory_index += N;
 

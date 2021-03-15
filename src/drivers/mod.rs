@@ -18,6 +18,12 @@ pub mod stm32f4 {
     pub mod systick;
 }
 
+#[cfg(feature = "efm32gg11b_any")]
+#[macro_use]
+pub mod efm32gg11b {
+    pub mod gpio;
+}
+
 pub mod led;
 
 /// Drivers for the Micron manufacturer (e.g. external flash).
