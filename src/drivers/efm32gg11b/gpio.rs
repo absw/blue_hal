@@ -1,4 +1,8 @@
 use core::marker::PhantomData;
+use core::ops::Deref;
+use efm32pac::{CMU, GPIO, cmu};
+
+use crate::efm32pac;
 
 use crate::utilities::safety::LimitedU8;
 
@@ -22,12 +26,16 @@ const fn is_valid_port(port: char) -> bool { port >= FIRST_PORT && port <= LAST_
 const fn is_valid_index(index: u8) -> bool { index < 16 }
 
 pub struct Gpio {
-    claimed: [u16; TOTAL_PORTS]
+    claimed: [u16; TOTAL_PORTS],
+    pac_gpio: GPIO,
 }
 
 impl Gpio {
-    fn new() -> Self {
-        Self { claimed: [0u16; TOTAL_PORTS] }
+    fn new(pac_gpio: GPIO, pac_cmu: &mut CMU) -> Self {
+        pac_cmu.hfbusclken0.write(|w| w.gpio().set_bit());
+        Self {
+            pac_gpio, claimed: [0u16; TOTAL_PORTS]
+        }
     }
 
     fn is_claimed<const PORT: char, const INDEX: u8>(&self) -> bool {
@@ -40,7 +48,7 @@ impl Gpio {
         self.claimed[entry] |= 0b1 << INDEX;
     }
 
-    pub fn claim_pin_as_input<const PORT: char, const INDEX: u8>(&mut self) -> Option<Pin<Input, PORT, INDEX>> {
+    pub fn claim_as_input<const PORT: char, const INDEX: u8>(&mut self) -> Option<Pin<Input, PORT, INDEX>> {
         if !is_valid_port(PORT) || !is_valid_index(INDEX) || self.is_claimed::<PORT, INDEX>() {
             return None;
         }
@@ -48,7 +56,7 @@ impl Gpio {
         self.set_as_claimed::<PORT, INDEX>();
         Some(Pin::new())
     }
-    pub fn claim_pin_as_output<const PORT: char, const INDEX: u8>(&mut self) -> Option<Pin<Output, PORT, INDEX>> {
+    pub fn claim_as_output<const PORT: char, const INDEX: u8>(&mut self) -> Option<Pin<Output, PORT, INDEX>> {
         if !is_valid_port(PORT) || !is_valid_index(INDEX) || self.is_claimed::<PORT, INDEX>() {
             return None;
         }
@@ -71,21 +79,23 @@ impl Gpio {
 mod test {
     use super::*;
 
+    struct FakePacGpio;
+
     #[test]
     fn pins_can_only_be_claimed_once() {
-        let mut gpio = Gpio::new();
-        assert!(gpio.claim_pin_as_output::<'A', 3>().is_some());
-        assert!(gpio.claim_pin_as_output::<'A', 3>().is_none());
+        let mut gpio = Gpio::new(FakePacGpio);
+        assert!(gpio.claim_as_output::<'A', 3>().is_some());
+        assert!(gpio.claim_as_output::<'A', 3>().is_none());
 
-        assert!(gpio.claim_pin_as_output::<'C', 8>().is_some());
-        assert!(gpio.claim_pin_as_output::<'C', 8>().is_none());
-        assert!(gpio.claim_pin_as_output::<'C', 8>().is_none());
+        assert!(gpio.claim_as_output::<'C', 8>().is_some());
+        assert!(gpio.claim_as_output::<'C', 8>().is_none());
+        assert!(gpio.claim_as_output::<'C', 8>().is_none());
     }
 
     #[test]
     fn pins_outside_valid_ranges_cannot_be_claimed() {
-        let mut gpio = Gpio::new();
-        assert!(gpio.claim_pin_as_output::<'W', 1>().is_none());
-        assert!(gpio.claim_pin_as_output::<'A', 123>().is_none());
+        let mut gpio = Gpio::new(FakePacGpio);
+        assert!(gpio.claim_as_output::<'W', 1>().is_none());
+        assert!(gpio.claim_as_output::<'A', 123>().is_none());
     }
 }
