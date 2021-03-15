@@ -41,7 +41,7 @@ impl Gpio {
     }
 
     pub fn claim_pin_as_input<const PORT: char, const INDEX: u8>(&mut self) -> Option<Pin<Input, PORT, INDEX>> {
-        if self.is_claimed::<PORT, INDEX>() || !is_valid_port(PORT) || !is_valid_index(INDEX) {
+        if !is_valid_port(PORT) || !is_valid_index(INDEX) || self.is_claimed::<PORT, INDEX>() {
             return None;
         }
 
@@ -49,7 +49,7 @@ impl Gpio {
         Some(Pin::new())
     }
     pub fn claim_pin_as_output<const PORT: char, const INDEX: u8>(&mut self) -> Option<Pin<Output, PORT, INDEX>> {
-        if self.is_claimed::<PORT, INDEX>() ||!is_valid_port(PORT) || !is_valid_index(INDEX) {
+        if !is_valid_port(PORT) || !is_valid_index(INDEX) || self.is_claimed::<PORT, INDEX>() {
             return None;
         }
 
@@ -58,7 +58,7 @@ impl Gpio {
     }
     pub fn claim_pin_with_alternate_function<const AF_INDEX: u8, const PORT: char, const INDEX: u8>(&mut self
     ) -> Option<Pin<AlternateFunction<AF_INDEX>, PORT, INDEX>> {
-        if self.is_claimed::<PORT, INDEX>() || !is_valid_port(PORT) || !is_valid_index(INDEX) {
+        if !is_valid_port(PORT) || !is_valid_index(INDEX) || self.is_claimed::<PORT, INDEX>() {
             return None;
         }
 
@@ -80,5 +80,12 @@ mod test {
         assert!(gpio.claim_pin_as_output::<'C', 8>().is_some());
         assert!(gpio.claim_pin_as_output::<'C', 8>().is_none());
         assert!(gpio.claim_pin_as_output::<'C', 8>().is_none());
+    }
+
+    #[test]
+    fn pins_outside_valid_ranges_cannot_be_claimed() {
+        let mut gpio = Gpio::new();
+        assert!(gpio.claim_pin_as_output::<'W', 1>().is_none());
+        assert!(gpio.claim_pin_as_output::<'A', 123>().is_none());
     }
 }
