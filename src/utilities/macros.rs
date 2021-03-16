@@ -71,3 +71,23 @@ macro_rules! structs {
         $(struct $struct; impl $trait for $struct {})+
     };
 }
+
+/// Calls an inner macro by expanding the outer arguments in matrix form.
+///
+/// # Example:
+///
+/// ```ignore
+/// matrix!(my_macro, [a b c] [1 2 3]);
+/// ```
+///
+/// Is equivalent to:
+/// ```ignore
+/// my_macro!(a 1 a 2 a 3 b 1 b 2 b 3 c 1 c 2 c 3);
+/// ```
+///
+#[macro_export]
+macro_rules! matrix {
+    ( $inner_macro:ident [$($n:tt)+] $ms:tt) => ( matrix! { $inner_macro $($n $ms)* });
+    ( $inner_macro:ident $( $n:tt [$($m:tt)*] )* ) =>
+        ( $inner_macro! { $( $( $n $m )* )* } );
+}
