@@ -22,7 +22,7 @@ stm32f4_any = ["stm32_any"]
 stm32_any = ["cortex_m_any"]
 cortex_m_any = []
 wgm160p = ["efm32gg11b_any"]
-efm32gg11b_any = ["efm32gg11b"]
+efm32gg11b_any = ["efm32gg11b", "cortex_m_any"]
 
 defmt-default = []
 defmt-trace = []

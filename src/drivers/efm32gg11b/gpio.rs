@@ -50,7 +50,6 @@ enum Mode {
 }
 
 impl<MODE, const PORT: char, const INDEX: u8> Pin<MODE, PORT, INDEX> {
-    const OFFSET: u8 = (4 * INDEX) % 32;
 
     // Inner constructor. Only the GPIO module can call it to ensure
     // there only exists one of each pin.
@@ -75,6 +74,7 @@ impl<MODE, const PORT: char, const INDEX: u8> Pin<MODE, PORT, INDEX> {
     }
 
     fn set_mode(mode: Mode) {
+        let offset = (4 * INDEX) % 32;
         // Safety: We can interact with the GPIO register block, as we promise
         // we only modify bits related to this specific pin and port, and nothing
         // else has control over those bits.
@@ -88,14 +88,15 @@ impl<MODE, const PORT: char, const INDEX: u8> Pin<MODE, PORT, INDEX> {
         unsafe {
             if INDEX >= high_register_threshold {
                 gpio_modify!(PORT, modeh, |r, w| {
-                    w.bits((r.bits() & !(mask << Self::OFFSET)) | (mode << Self::OFFSET))
+                    w.bits((r.bits() & !(mask << offset)) | (mode << offset))
                 });
             } else {
                 gpio_modify!(PORT, model, |r, w| {
-                    w.bits((r.bits() & !(mask << Self::OFFSET)) | (mode << Self::OFFSET))
+                    w.bits((r.bits() & !(mask << offset)) | (mode << offset))
                 });
             };
         }
+
     }
 }
 
@@ -104,26 +105,27 @@ impl<const PORT: char, const INDEX: u8> OutputPin for Pin<Output, PORT, INDEX> {
         // Safety: We can interact with the GPIO register block, as we promise
         // we only modify bits related to this specific pin and port, and nothing
         // else has control over those bits.
-        unsafe { gpio_modify!(PORT, dout, |r, w| { w.bits(r.bits() & !(1 << Self::OFFSET)) }) }
+        unsafe { gpio_modify!(PORT, dout, |r, w| { w.bits(r.bits() & !(1 << INDEX)) }) }
     }
 
     fn set_high(&mut self) {
         // Safety: We can interact with the GPIO register block, as we promise
         // we only modify bits related to this specific pin and port, and nothing
         // else has control over those bits.
-        unsafe { gpio_modify!(PORT, dout, |r, w| { w.bits(r.bits() | (1 << Self::OFFSET)) }) }
+        unsafe { gpio_modify!(PORT, dout, |r, w| {
+            w.bits(r.bits() | (1 << INDEX)) }) }
     }
 }
 
 impl<const PORT: char, const INDEX: u8> TogglePin for Pin<Output, PORT, INDEX> {
     fn toggle(&mut self) {
-        unsafe { gpio_write!(PORT, douttgl, |w| { w.bits(1 << Self::OFFSET) }) }
+        unsafe { gpio_write!(PORT, douttgl, |w| { w.bits(1 << INDEX) }) }
     }
 }
 
 impl<const PORT: char, const INDEX: u8> InputPin for Pin<Input, PORT, INDEX> {
     fn is_high(&self) -> bool {
-        unsafe { gpio_read!(PORT, din, |r| { r.bits() >> Self::OFFSET & 1 == 1 }) }
+        unsafe { gpio_read!(PORT, din, |r| { r.bits() >> INDEX & 1 == 1 }) }
     }
 
     fn is_low(&self) -> bool { !self.is_high() }
@@ -133,7 +135,11 @@ impl<const PORT: char, const INDEX: u8> InputPin for Pin<Input, PORT, INDEX> {
 #[macro_export(local_inner_macros)]
 macro_rules! gpio_read {
     ($port:ident, $register_name:ident, |$read:ident| $block:block) => {
-        gpio_read_inner!(['A' 'B' 'C' 'D' 'E' 'F' 'G' 'H' 'I' 'J' 'K' 'L'] $port, $register_name, |$read| $block);
+        gpio_read_inner!(
+            ['A' 'B' 'C' 'D' 'E' 'F' 'G' 'H' 'I' 'J' 'K' 'L']
+            [a b c d e f g h i j k l]
+            $port, $register_name, |$read| $block
+        );
     };
 }
 
@@ -141,7 +147,11 @@ macro_rules! gpio_read {
 #[macro_export(local_inner_macros)]
 macro_rules! gpio_modify {
     ($port:ident, $register_name:ident, |$read:ident, $write:ident| $block:block) => {
-        gpio_modify_inner!(['A' 'B' 'C' 'D' 'E' 'F' 'G' 'H' 'I' 'J' 'K' 'L'] $port, $register_name, |$read, $write| $block)
+        gpio_modify_inner!(
+            ['A' 'B' 'C' 'D' 'E' 'F' 'G' 'H' 'I' 'J' 'K' 'L']
+            [a b c d e f g h i j k l]
+            $port, $register_name, |$read, $write| $block
+        );
     };
 }
 
@@ -149,7 +159,11 @@ macro_rules! gpio_modify {
 #[macro_export(local_inner_macros)]
 macro_rules! gpio_write {
     ($port:ident, $register_name:ident, |$write:ident| $block:block) => {
-        gpio_write_inner!(['A' 'B' 'C' 'D' 'E' 'F' 'G' 'H' 'I' 'J' 'K' 'L'] $port, $register_name, |$write| $block)
+        gpio_write_inner!(
+            ['A' 'B' 'C' 'D' 'E' 'F' 'G' 'H' 'I' 'J' 'K' 'L']
+            [a b c d e f g h i j k l]
+            $port, $register_name, |$write| $block
+        );
     };
 }
 
@@ -177,11 +191,11 @@ macro_rules! construct_gpio {
 
 #[macro_export(local_inner_macros)]
 macro_rules! gpio_read_inner {
-    ([$($letter:literal)+] $port:ident, $register_name:ident, |$read:ident| $block:block) => {
+    ([$($character:literal)+] [$($letter:ident)+] $port:ident, $register_name:ident, |$read:ident| $block:block) => {
         paste::item! {
             #[allow(unused_braces)]
             match PORT {
-                $($letter => { let $read = (*GPIO::ptr()).[<pa_ $register_name>].read(); $block }, )+
+                $($character => { let $read = (*GPIO::ptr()).[<p $letter _ $register_name>].read(); $block }, )+
                 _ => core::panic!("Unexpected port"),
             }
         }
@@ -190,11 +204,11 @@ macro_rules! gpio_read_inner {
 
 #[macro_export(local_inner_macros)]
 macro_rules! gpio_modify_inner {
-    ([$($letter:literal)+] $port:ident, $register_name:ident, |$read:ident, $write:ident| $block:block) => {
+    ([$($character:literal)+] [$($letter:ident)+] $port:ident, $register_name:ident, |$read:ident, $write:ident| $block:block) => {
         paste::item! {
             #[allow(unused_braces)]
             match PORT {
-                $($letter => { (*GPIO::ptr()).[<pa_ $register_name>].modify(|$read, $write| $block) })+
+                $($character => { (*GPIO::ptr()).[<p $letter _ $register_name>].modify(|$read, $write| $block) })+
                 _ => core::panic!("Unexpected port"),
             }
         }
@@ -203,11 +217,11 @@ macro_rules! gpio_modify_inner {
 
 #[macro_export(local_inner_macros)]
 macro_rules! gpio_write_inner {
-    ([$($letter:literal)+] $port:ident, $register_name:ident, |$write:ident| $block:block) => {
+    ([$($character:literal)+] [$($letter:ident)+] $port:ident, $register_name:ident, |$write:ident| $block:block) => {
         paste::item! {
             #[allow(unused_braces)]
             match PORT {
-                $($letter => { (*GPIO::ptr()).[<pa_ $register_name>].write(|$write| $block) })+
+                $($character => { (*GPIO::ptr()).[<p $letter _ $register_name>].write(|$write| $block) })+
                 _ => core::panic!("Unexpected port"),
             }
         }
