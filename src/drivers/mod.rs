@@ -21,6 +21,7 @@ pub mod stm32f4 {
 #[cfg(feature = "efm32gg11b_any")]
 #[macro_use]
 pub mod efm32gg11b {
+    #[macro_use]
     pub mod gpio;
 }
 
