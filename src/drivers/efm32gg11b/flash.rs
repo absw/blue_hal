@@ -1,8 +1,7 @@
 use core::ops::{Add, Sub};
 
 use bytemuck::cast_slice;
-use cortex_m_semihosting::hprintln;
-use efm32gg11b::{CMU, MSC};
+use efm32gg11b::MSC;
 
 use crate::{
     hal::flash::ReadWrite,
@@ -21,6 +20,10 @@ pub struct Page(pub u16);
 
 impl Map {
     pub fn pages() -> impl Iterator<Item = Page> { (0..count::PAGES as u16).map(Page) }
+}
+
+impl Map {
+    pub const fn size() -> usize { size::PAGE * count::PAGES }
 }
 
 impl Page {

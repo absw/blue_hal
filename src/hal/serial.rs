@@ -105,7 +105,9 @@ macro_rules! uprintln {
 macro_rules! duprintln {
     ($serial:expr, $($arg:tt)+) => {
         {
-            let _ = uwriteln!($serial, $($arg)+ );
+            if let Some(serial) = $serial.as_mut() {
+                let _ = uwriteln!(serial, $($arg)+ );
+            }
             defmt::info!($($arg)+);
         }
     };

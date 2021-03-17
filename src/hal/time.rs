@@ -1,5 +1,6 @@
 //! Time units.
 use core::ops::{Add as Adds, Sub as Subtracts};
+use marker_blanket::marker_blanket;
 
 /// Abstract point in time. Useful for time periods
 ///
@@ -8,13 +9,9 @@ use core::ops::{Add as Adds, Sub as Subtracts};
 ///
 /// Any implementer of Instant can be added with
 /// milliseconds to obtain another instant.
-pub trait Instant
-where
-    Self: Copy + Clone,
-    Self: Subtracts<Output = Milliseconds>,
-    Self: Adds<Milliseconds, Output = Self>,
-{
-}
+#[marker_blanket]
+pub trait Instant: Copy + Clone + Subtracts<Output = Milliseconds> + Adds<Milliseconds, Output = Self>
+{}
 
 pub trait Now {
     type I: Instant;
