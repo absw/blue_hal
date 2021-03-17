@@ -13,6 +13,11 @@ pub trait OutputPin {
     fn set_high(&mut self);
 }
 
+/// Interface to a toggleable pin.
+pub trait TogglePin {
+    fn toggle(&mut self);
+}
+
 /// Interface to a readable pin.
 pub trait InputPin {
     fn is_high(&self) -> bool;
