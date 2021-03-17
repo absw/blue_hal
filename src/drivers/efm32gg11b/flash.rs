@@ -1,7 +1,8 @@
 use core::ops::{Add, Sub};
 
 use bytemuck::cast_slice;
-use efm32gg11b::MSC;
+use cortex_m_semihosting::hprintln;
+use efm32gg11b::{CMU, MSC};
 
 use crate::{hal::flash::ReadWrite, utilities::memory::Region, utilities::memory::IterableByOverlaps};
 
@@ -78,18 +79,25 @@ impl Flash {
          Self { msc }
     }
 
+    #[link_section = ".data"] // Must be executed from RAM
     fn is_busy(&self) -> bool { self.msc.status.read().busy().bit_is_set() }
+
+    #[link_section = ".data"] // Must be executed from RAM
     fn wait_until_not_busy(&self) { while self.is_busy() {} }
+
+    #[link_section = ".data"] // Must be executed from RAM
     fn wait_until_ready_to_write(&self) { while self.msc.status.read().wdataready().bit_is_clear() {} }
 
     #[link_section = ".data"] // Must be executed from RAM
     fn erase_page(&mut self, page: Page) -> nb::Result<(), Error> {
         if self.is_busy() { return Err(nb::Error::WouldBlock); }
         self.load_address(page.address())?;
+        self.msc.writecmd.write(|w| w.erasepage().set_bit());
         self.wait_until_not_busy();
         Ok(())
     }
 
+    #[link_section = ".data"] // Must be executed from RAM
     fn load_address(&self, Address(value): Address) -> nb::Result<(), Error> {
         // Safety: Unsafe access here is required only to write
         // multiple bits at once to the same register. We must ensure
@@ -100,6 +108,7 @@ impl Flash {
         self.verify_status()
     }
 
+    #[link_section = ".data"] // Must be executed from RAM
     fn verify_status(&self) -> nb::Result<(), Error> {
         let error = self.msc.status.read().invaddr().bit_is_set().then_some(Error::InvalidAddress)
             .or(self.msc.status.read().locked().bit_is_set().then_some(Error::MemoryIsLocked));
@@ -177,8 +186,8 @@ impl ReadWrite for Flash {
     #[link_section = ".data"] // Must be executed from RAM
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         let Address(address_value) = address;
-        let correctly_aligned_start = address_value & 0b11 != 0;
-        let correctly_aligned_end = bytes.len() & 0b11 != 0;
+        let correctly_aligned_start = address_value & 0b11 == 0;
+        let correctly_aligned_end = bytes.len() & 0b11 == 0;
         if !correctly_aligned_end || !correctly_aligned_start {
             return Err(nb::Error::Other(Error::MisalignedAccess))
         }
