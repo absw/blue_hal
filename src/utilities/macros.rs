@@ -91,3 +91,10 @@ macro_rules! matrix {
     ( $inner_macro:ident $( $n:tt [$($m:tt)*] )* ) =>
         ( $inner_macro! { $( $( $n $m )* )* } );
 }
+
+
+/// Allowed pins for a particular function
+#[allow(unused)]
+macro_rules! allowed {
+    ($($function:ty: [$($pin:ty)+])*) => { $($(impl $function for $pin {})+)* }
+;}

@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 use efm32pac::{CMU, GPIO};
 
 use crate::{
-    construct_gpio, efm32pac, gpio_modify, gpio_read, gpio_struct, gpio_write,
+    construct_gpio, efm32pac, gpio_modify, gpio_read, gpio_struct, gpio_write, pin_aliases,
     hal::gpio::{InputPin, OutputPin, TogglePin},
     matrix,
 };
@@ -41,6 +41,13 @@ pub struct Pin<MODE, const PORT: char, const INDEX: u8> {
     _marker: PhantomData<MODE>,
 }
 
+// Define some pin type aliases for readability (e.g. `Pb6<MODE> as alias of `Pin<MODE, 'B', 6>`)
+matrix! {
+    pin_aliases
+    [(a 'A') (b 'B') (c 'C') (d 'D') (e 'E') (f 'F') (g 'G') (h 'H') (i 'I') (j 'J') (k 'K') (l 'L')]
+    [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+}
+
 /// Bit representation of pin modes.
 enum Mode {
     Disabled = 0,
@@ -50,7 +57,6 @@ enum Mode {
 }
 
 impl<MODE, const PORT: char, const INDEX: u8> Pin<MODE, PORT, INDEX> {
-
     // Inner constructor. Only the GPIO module can call it to ensure
     // there only exists one of each pin.
     fn new() -> Self { Self { _marker: Default::default() } }
@@ -96,7 +102,6 @@ impl<MODE, const PORT: char, const INDEX: u8> Pin<MODE, PORT, INDEX> {
                 });
             };
         }
-
     }
 }
 
@@ -226,4 +231,14 @@ macro_rules! gpio_write_inner {
             }
         }
     };
+}
+
+
+#[macro_export(local_inner_macros)]
+macro_rules! pin_aliases {
+    ($( ($letter:tt $character:tt) $number:tt )*) => { paste::item! {
+        $(
+            pub type [<P $letter $number>]<MODE> = Pin<MODE, $character, $number>;
+        )*
+    } }
 }

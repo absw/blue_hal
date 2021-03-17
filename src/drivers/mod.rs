@@ -23,6 +23,7 @@ pub mod stm32f4 {
 pub mod efm32gg11b {
     #[macro_use]
     pub mod gpio;
+    pub mod serial;
 }
 
 pub mod led;
