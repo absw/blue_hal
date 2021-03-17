@@ -32,10 +32,14 @@ allowed! {
     TxPin<USART5>: [Pe8<Output> Pa6<Output> Pf15<Output> Ph10<Output>]
 }
 
-pub struct Uart<UART, TX: TxPin<UART>, RX: RxPin<UART>, const INDEX: u8> { // USART 0 to 5, then uart 0 to 1
+pub struct Serial<U, TX: TxPin<U>, RX: RxPin<U>> {
     pub tx: TX,
     pub rx: RX,
-    _marker: PhantomData<UART>,
+    _marker: PhantomData<U>,
 }
 
-
+impl<U, TX: TxPin<U>, RX: RxPin<U>> Serial<U, TX, RX> {
+    pub fn new(tx: TX, rx:RX) -> Self {
+        Self { tx, rx, _marker: Default::default() }
+    }
+}
