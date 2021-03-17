@@ -2,9 +2,9 @@ use core::marker::PhantomData;
 use efm32pac::{CMU, GPIO};
 
 use crate::{
-    construct_gpio, efm32pac, gpio_modify, gpio_read, gpio_struct, gpio_write, pin_aliases,
+    construct_gpio, efm32pac, gpio_modify, gpio_read, gpio_struct, gpio_write,
     hal::gpio::{InputPin, OutputPin, TogglePin},
-    matrix,
+    matrix, pin_aliases,
 };
 
 /// Pin mode typestates
@@ -117,15 +117,12 @@ impl<const PORT: char, const INDEX: u8> OutputPin for Pin<Output, PORT, INDEX> {
         // Safety: We can interact with the GPIO register block, as we promise
         // we only modify bits related to this specific pin and port, and nothing
         // else has control over those bits.
-        unsafe { gpio_modify!(PORT, dout, |r, w| {
-            w.bits(r.bits() | (1 << INDEX)) }) }
+        unsafe { gpio_modify!(PORT, dout, |r, w| { w.bits(r.bits() | (1 << INDEX)) }) }
     }
 }
 
 impl<const PORT: char, const INDEX: u8> TogglePin for Pin<Output, PORT, INDEX> {
-    fn toggle(&mut self) {
-        unsafe { gpio_write!(PORT, douttgl, |w| { w.bits(1 << INDEX) }) }
-    }
+    fn toggle(&mut self) { unsafe { gpio_write!(PORT, douttgl, |w| { w.bits(1 << INDEX) }) } }
 }
 
 impl<const PORT: char, const INDEX: u8> InputPin for Pin<Input, PORT, INDEX> {
@@ -232,7 +229,6 @@ macro_rules! gpio_write_inner {
         }
     };
 }
-
 
 #[macro_export(local_inner_macros)]
 macro_rules! pin_aliases {

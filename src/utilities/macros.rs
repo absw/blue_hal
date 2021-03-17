@@ -92,7 +92,6 @@ macro_rules! matrix {
         ( $inner_macro! { $( $( $n $m )* )* } );
 }
 
-
 /// Allowed pins for a particular function
 #[allow(unused)]
 macro_rules! allowed {

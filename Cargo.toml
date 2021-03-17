@@ -41,6 +41,7 @@ static_assertions = "1.1.0"
 defmt = "0.2"
 defmt-rtt = "0.2"
 marker-blanket = "0.1"
+bytemuck = "1.5.1"
 
 [dependencies.nom]
 version = "6.0.1"

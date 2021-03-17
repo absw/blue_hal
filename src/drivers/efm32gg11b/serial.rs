@@ -1,9 +1,14 @@
 use core::marker::PhantomData;
 
-use crate::hal::gpio::{InputPin, OutputPin};
-use crate::efm32pac;
-use super::gpio::{*, typestate::{Input, Output}};
-use efm32pac::{USART0, USART1, USART2, USART3, USART4, USART5, UART0, UART1};
+use super::gpio::{
+    typestate::{Input, Output},
+    *,
+};
+use crate::{
+    efm32pac,
+    hal::gpio::{InputPin, OutputPin},
+};
+use efm32pac::{UART0, UART1, USART0, USART1, USART2, USART3, USART4, USART5};
 
 mod sealed {
     use super::*;
@@ -39,7 +44,5 @@ pub struct Serial<U, TX: TxPin<U>, RX: RxPin<U>> {
 }
 
 impl<U, TX: TxPin<U>, RX: RxPin<U>> Serial<U, TX, RX> {
-    pub fn new(tx: TX, rx:RX) -> Self {
-        Self { tx, rx, _marker: Default::default() }
-    }
+    pub fn new(tx: TX, rx: RX) -> Self { Self { tx, rx, _marker: Default::default() } }
 }

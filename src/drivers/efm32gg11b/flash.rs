@@ -1,23 +1,34 @@
 use core::ops::{Add, Sub};
 
+use bytemuck::cast_slice;
 use efm32gg11b::MSC;
 
-use crate::{hal::flash::ReadWrite, utilities::memory::Region};
+use crate::{hal::flash::ReadWrite, utilities::memory::Region, utilities::memory::IterableByOverlaps};
 
 pub struct Flash {
     msc: MSC
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Map;
-pub struct Page(u16);
+
+#[derive(Copy, Clone, Debug)]
+pub struct Page(pub u16);
+
 
 impl Map {
     pub fn pages() -> impl Iterator<Item=Page> { (0..count::PAGES as u16).map(Page) }
 }
 
+impl Page {
+    pub fn address(&self) -> Address { Address(self.0 as u32 * size::PAGE as u32)}
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum Error {
     MemoryNotReachable,
+    MemoryIsLocked,
+    InvalidAddress,
     MisalignedAccess,
 }
 
@@ -69,6 +80,63 @@ impl Flash {
 
     fn is_busy(&self) -> bool { self.msc.status.read().busy().bit_is_set() }
     fn wait_until_not_busy(&self) { while self.is_busy() {} }
+    fn wait_until_ready_to_write(&self) { while self.msc.status.read().wdataready().bit_is_clear() {} }
+
+    #[link_section = ".data"] // Must be executed from RAM
+    fn erase_page(&mut self, page: Page) -> nb::Result<(), Error> {
+        if self.is_busy() { return Err(nb::Error::WouldBlock); }
+        self.load_address(page.address())?;
+        self.wait_until_not_busy();
+        Ok(())
+    }
+
+    fn load_address(&self, Address(value): Address) -> nb::Result<(), Error> {
+        // Safety: Unsafe access here is required only to write
+        // multiple bits at once to the same register. We must ensure
+        // that we write bits that leave the peripheral in a known and
+        // correct state.
+        unsafe { self.msc.addrb.write(|w| w.bits(value)) }
+        self.msc.writecmd.write(|w| w.laddrim().set_bit());
+        self.verify_status()
+    }
+
+    fn verify_status(&self) -> nb::Result<(), Error> {
+        let error = self.msc.status.read().invaddr().bit_is_set().then_some(Error::InvalidAddress)
+            .or(self.msc.status.read().locked().bit_is_set().then_some(Error::MemoryIsLocked));
+
+        if let Some(error) = error {
+            Err(nb::Error::Other(error))
+        } else {
+            Ok(())
+        }
+    }
+
+    #[link_section = ".data"] // Must be executed from RAM
+    fn write_page(
+        &mut self,
+        bytes: &[u8],
+        page: Page,
+    ) -> nb::Result<(), Error> {
+        if bytes.len() != size::PAGE {
+            return Err(nb::Error::Other(Error::MisalignedAccess));
+        }
+        if self.is_busy() {
+            return Err(nb::Error::WouldBlock);
+        }
+        // We know this to be aligned, so it can't fail.
+        let words: &[u32] = cast_slice(bytes);
+
+        self.load_address(page.address())?;
+        for word in words {
+            self.wait_until_ready_to_write();
+            // Safety: Unsafe required to write the entire word at once to a register.
+            unsafe { self.msc.wdata.write(|w| w.bits(*word)) }
+            self.msc.writecmd.write(|w| w.writeonce().set_bit());
+            self.wait_until_not_busy();
+        }
+
+        Ok(())
+    }
 }
 
 impl Drop for Flash {
@@ -106,15 +174,41 @@ impl ReadWrite for Flash {
         }
     }
 
+    #[link_section = ".data"] // Must be executed from RAM
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
-        todo!()
+        let Address(address_value) = address;
+        let correctly_aligned_start = address_value & 0b11 != 0;
+        let correctly_aligned_end = bytes.len() & 0b11 != 0;
+        if !correctly_aligned_end || !correctly_aligned_start {
+            return Err(nb::Error::Other(Error::MisalignedAccess))
+        }
+        if self.is_busy() {
+            return Err(nb::Error::WouldBlock);
+        }
+
+        for (block, page, address) in Map::pages().overlaps(bytes, address) {
+            let page_data = &mut [0u8; size::PAGE];
+            nb::block!(self.read(page.address(), page_data))?;
+            let offset_into_page = address.0.saturating_sub(page.address().0) as usize;
+            page_data
+                .iter_mut()
+                .skip(offset_into_page)
+                .zip(block)
+                .for_each(|(byte, input)| *byte = *input);
+            nb::block!(self.erase_page(page))?;
+            nb::block!(self.write_page(page_data, page))?;
+        }
+
+        Ok(())
     }
 
     fn range(&self) -> (Self::Address, Self::Address) {
         (Address(0), Address(0) + count::PAGES * size::PAGE)
     }
 
+    #[link_section = ".data"] // Must be executed from RAM
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
+        if self.is_busy() { return Err(nb::Error::WouldBlock); }
         const MSC_MASS_ERASE_CODE: u32 = 0x0000631A;
         // Safety: Unsafe access here is required only to write
         // multiple bits at once to the same register. We must ensure
@@ -134,7 +228,24 @@ impl ReadWrite for Flash {
         address: Self::Address,
         blocks: I,
     ) -> Result<(), Self::Error> {
-        todo!()
+        const TRANSFER_SIZE: usize = KB!(4);
+        assert!(TRANSFER_SIZE % N == 0);
+        let mut transfer_array = [0x00u8; TRANSFER_SIZE];
+        let mut memory_index = 0usize;
+
+        for block in blocks {
+            let slice = &mut transfer_array
+                [(memory_index % TRANSFER_SIZE)..((memory_index % TRANSFER_SIZE) + N)];
+            slice.clone_from_slice(&block);
+            memory_index += N;
+
+            if memory_index % TRANSFER_SIZE == 0 {
+                nb::block!(self.write(address + (memory_index - TRANSFER_SIZE), &transfer_array))?;
+                transfer_array.iter_mut().for_each(|b| *b = 0x00u8);
+            }
+        }
+        let remainder = &transfer_array[0..(memory_index % TRANSFER_SIZE)];
+        nb::block!(self.write(address + (memory_index - remainder.len()), &remainder))
     }
 }
 
@@ -142,7 +253,6 @@ impl ReadWrite for Flash {
 mod size {
     use super::count;
     pub const PAGE: usize = KB!(4);
-    pub const MEMORY: usize = PAGE * count::PAGES;
 }
 
 mod count {
