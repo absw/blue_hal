@@ -25,6 +25,7 @@ pub mod efm32gg11b {
     pub mod gpio;
     pub mod serial;
     pub mod flash;
+    pub mod clocks;
 }
 
 pub mod led;
