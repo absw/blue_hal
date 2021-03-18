@@ -40,7 +40,7 @@ impl Clocks {
 
     }
 
-    fn get_frequency_hfclk(&self) -> time::Hertz {
+    pub fn get_frequency_hfclk(&self) -> time::Hertz {
         if !matches!(self.get_hf_clock_source(), HfClkClockSource::Hfrco) {
             unimplemented!("Only HfClk<-Hfrco sourced clock calculations implemented");
         }
