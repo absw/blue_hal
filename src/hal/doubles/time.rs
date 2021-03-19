@@ -4,8 +4,6 @@ use crate::hal::time;
 pub struct MockInstant {}
 pub struct MockSysTick {}
 
-impl time::Instant for MockInstant {}
-
 impl time::Now for MockSysTick {
     type I = MockInstant;
     fn now() -> MockInstant { MockInstant {} }
