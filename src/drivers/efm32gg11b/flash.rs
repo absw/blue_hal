@@ -88,18 +88,14 @@ impl Flash {
         Self { msc }
     }
 
-    #[link_section = ".data"] // Must be executed from RAM
     fn is_busy(&self) -> bool { self.msc.status.read().busy().bit_is_set() }
 
-    #[link_section = ".data"] // Must be executed from RAM
     fn wait_until_not_busy(&self) { while self.is_busy() {} }
 
-    #[link_section = ".data"] // Must be executed from RAM
     fn wait_until_ready_to_write(&self) {
         while self.msc.status.read().wdataready().bit_is_clear() {}
     }
 
-    #[link_section = ".data"] // Must be executed from RAM
     fn erase_page(&mut self, page: Page) -> nb::Result<(), Error> {
         if self.is_busy() {
             return Err(nb::Error::WouldBlock);
@@ -110,7 +106,6 @@ impl Flash {
         Ok(())
     }
 
-    #[link_section = ".data"] // Must be executed from RAM
     fn load_address(&self, Address(value): Address) -> nb::Result<(), Error> {
         // Safety: Unsafe access here is required only to write
         // multiple bits at once to the same register. We must ensure
@@ -121,7 +116,6 @@ impl Flash {
         self.verify_status()
     }
 
-    #[link_section = ".data"] // Must be executed from RAM
     fn verify_status(&self) -> nb::Result<(), Error> {
         let error = self
             .msc
@@ -139,7 +133,6 @@ impl Flash {
         }
     }
 
-    #[link_section = ".data"] // Must be executed from RAM
     fn write_page(&mut self, bytes: &[u8], page: Page) -> nb::Result<(), Error> {
         if bytes.len() != size::PAGE {
             return Err(nb::Error::Other(Error::MisalignedAccess));
@@ -198,7 +191,6 @@ impl ReadWrite for Flash {
         }
     }
 
-    #[link_section = ".data"] // Must be executed from RAM
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         let Address(address_value) = address;
         let correctly_aligned_start = address_value & 0b11 == 0;
@@ -230,7 +222,7 @@ impl ReadWrite for Flash {
         (Address(0), Address(0) + count::PAGES * size::PAGE)
     }
 
-    #[link_section = ".data"] // Must be executed from RAM
+
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
         if self.is_busy() {
             return Err(nb::Error::WouldBlock);
@@ -254,7 +246,7 @@ impl ReadWrite for Flash {
         address: Self::Address,
         blocks: I,
     ) -> Result<(), Self::Error> {
-        const TRANSFER_SIZE: usize = KB!(4);
+        const TRANSFER_SIZE: usize = KB!(64);
         assert!(TRANSFER_SIZE % N == 0);
         let mut transfer_array = [0x00u8; TRANSFER_SIZE];
         let mut memory_index = 0usize;
