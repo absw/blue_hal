@@ -8,6 +8,8 @@ use crate::{
     utilities::memory::{IterableByOverlaps, Region},
 };
 
+use super::clocks::Clocks;
+
 pub struct Flash {
     msc: MSC,
 }
@@ -73,7 +75,7 @@ impl Into<usize> for Address {
 }
 
 impl Flash {
-    pub fn new(msc: MSC) -> Self {
+    pub fn new(msc: MSC, _clocks: &Clocks) -> Self {
         const MSC_UNLOCK_CODE: u32 = 0x1B71;
         // Safety: Unsafe access here is required only to write
         // multiple bits at once to the same register. We must ensure

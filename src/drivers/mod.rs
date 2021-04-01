@@ -23,8 +23,10 @@ pub mod stm32f4 {
 pub mod efm32gg11b {
     #[macro_use]
     pub mod gpio;
+    #[macro_use]
     pub mod serial;
     pub mod flash;
+    pub mod clocks;
 }
 
 pub mod led;

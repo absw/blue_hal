@@ -1,13 +1,11 @@
-use core::marker::PhantomData;
 
-use super::gpio::{
+use core::any::Any;
+
+use super::{clocks::Clocks, gpio::{
     typestate::{Input, Output},
     *,
-};
-use crate::{
-    efm32pac,
-    hal::gpio::{InputPin, OutputPin},
-};
+}};
+use crate::{serial_write, efm32pac, hal::{gpio::{InputPin, OutputPin}, time::Hertz}};
 use efm32pac::{UART0, UART1, USART0, USART1, USART2, USART3, USART4, USART5};
 
 mod sealed {
@@ -38,11 +36,52 @@ allowed! {
 }
 
 pub struct Serial<U, TX: TxPin<U>, RX: RxPin<U>> {
-    pub tx: TX,
-    pub rx: RX,
-    _marker: PhantomData<U>,
+    _tx: TX,
+    _rx: RX,
+    peripheral: U,
 }
 
-impl<U, TX: TxPin<U>, RX: RxPin<U>> Serial<U, TX, RX> {
-    pub fn new(tx: TX, rx: RX) -> Self { Self { tx, rx, _marker: Default::default() } }
+impl<U: Any, TX: TxPin<U>, RX: RxPin<U>> Serial<U, TX, RX> {
+    const BAUD_RATE: u32 = 115200;
+    const OVERSAMPLE: u32 = 16;
+
+    pub fn new(peripheral: U, tx: TX, rx: RX, clocks: &Clocks) -> Self {
+        let mut serial = Self { peripheral, _tx: tx, _rx: rx };
+        serial.set_baud_rate(clocks);
+        serial
+    }
+
+    fn set_baud_rate(&mut self, clocks: &Clocks) {
+        let Hertz(frequency) = clocks.get_frequency_hfclk();
+        // Operate in u64 to avoid overflow
+        let divider = ((256 * frequency as u64) / ((Self::OVERSAMPLE * Self::BAUD_RATE) - 256) as u64) as u32;
+
+        // Safety: Unsafe access here is required only to write
+        // multiple bits at once to the same register. We must ensure
+        // that we write bits that leave the peripheral in a known and
+        // correct state.
+        unsafe { serial_write!(&self.peripheral, clkdiv, |w| { w.bits(divider)}); }
+    }
+
+}
+
+#[macro_export(local_inner_macros)]
+macro_rules! serial_write_inner {
+    ([$($serial:ident)+] $peripheral:expr, $register_name:ident, |$write:ident| $block:block) => {
+        $(
+            if let Some(p) = ($peripheral as &dyn Any).downcast_ref::<$serial>() {
+                p.$register_name.write(|$write| $block);
+            }
+        )+
+    };
+}
+
+#[macro_export(local_inner_macros)]
+macro_rules! serial_write {
+    ($peripheral:expr, $register_name:ident, |$write:ident| $block:block) => {
+        serial_write_inner!(
+            [UART0 UART1 USART0 USART1 USART2 USART3 USART4 USART5]
+            $peripheral, $register_name, |$write| $block
+        );
+    };
 }
