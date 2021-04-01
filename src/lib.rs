@@ -30,7 +30,6 @@ pub mod utilities {
     pub mod buffer;
     pub mod xmodem;
     pub mod safety;
-    pub mod types;
     mod macros;
 }
 
