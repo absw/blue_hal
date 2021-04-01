@@ -90,6 +90,7 @@ impl Clocks {
         // correct state.
         unsafe {
             msc.lock.write(|w| w.bits(MSC_UNLOCK_CODE));
+            msc.ctrl.modify(|_, w| w.waitmode().set_bit());
             msc.readctrl.modify(|_, w| w.mode().ws3());
             msc.lock.write(|w| w.bits(0));
         }
