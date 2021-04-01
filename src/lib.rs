@@ -4,7 +4,6 @@
 #![feature(never_type)]
 #![feature(bool_to_option)]
 #![feature(associated_type_bounds)]
-#![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]

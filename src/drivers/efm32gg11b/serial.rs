@@ -1,4 +1,4 @@
-use core::marker::PhantomData;
+
 use core::any::Any;
 
 use super::{clocks::Clocks, gpio::{
@@ -36,8 +36,8 @@ allowed! {
 }
 
 pub struct Serial<U, TX: TxPin<U>, RX: RxPin<U>> {
-    tx: TX,
-    rx: RX,
+    _tx: TX,
+    _rx: RX,
     peripheral: U,
 }
 
@@ -46,7 +46,7 @@ impl<U: Any, TX: TxPin<U>, RX: RxPin<U>> Serial<U, TX, RX> {
     const OVERSAMPLE: u32 = 16;
 
     pub fn new(peripheral: U, tx: TX, rx: RX, clocks: &Clocks) -> Self {
-        let mut serial = Self { peripheral, tx, rx };
+        let mut serial = Self { peripheral, _tx: tx, _rx: rx };
         serial.set_baud_rate(clocks);
         serial
     }

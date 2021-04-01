@@ -127,17 +127,17 @@ impl Clocks {
         }
     }
 
-    fn get_frequency_hfperclk(&self) -> time::Hertz {
+    fn _get_frequency_hfperclk(&self) -> time::Hertz {
         let hfclk_frequency = self.get_frequency_hfclk();
         let scale = 1 + self.cmu.hfperpresc.read().bits();
 
         Hertz(hfclk_frequency.0 / scale)
     }
 
-    fn get_frequency(&self, clock: Clock) -> time::Hertz {
+    fn _get_frequency(&self, clock: Clock) -> time::Hertz {
         match clock {
             Clock::HfClk => self.get_frequency_hfclk(),
-            Clock::HfPerClk => self.get_frequency_hfperclk(),
+            Clock::HfPerClk => self._get_frequency_hfperclk(),
         }
     }
 }
