@@ -209,10 +209,12 @@ macro_rules! gpio_modify_inner {
     ([$($character:literal)+] [$($letter:ident)+] $port:ident, $register_name:ident, |$read:ident, $write:ident| $block:block) => {
         paste::item! {
             #[allow(unused_braces)]
-            match PORT {
-                $($character => { (*GPIO::ptr()).[<p $letter _ $register_name>].modify(|$read, $write| $block) })+
-                _ => core::panic!("Unexpected port"),
-            }
+            ::cortex_m::interrupt::free(|_| {
+                match PORT {
+                    $($character => { (*GPIO::ptr()).[<p $letter _ $register_name>].modify(|$read, $write| $block) })+
+                    _ => core::panic!("Unexpected port"),
+                }
+            })
         }
     };
 }
