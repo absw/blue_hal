@@ -10,8 +10,6 @@ pub struct Tick {
     counter: u32,
 }
 
-impl time::Instant for Tick {}
-
 /// Handle over the SysTick. Allows safe access to the current instant.
 #[derive(Copy, Clone, Debug)]
 pub struct SysTick;
