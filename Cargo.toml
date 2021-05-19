@@ -10,7 +10,6 @@ version = "0.1.0"
 
 [features]
 default = [
-   "wgm160p",
    "defmt-default",
 ]
 stm32f412_discovery = ["stm32f412"]
