@@ -1,36 +1,58 @@
-use super::{flash, serial::{Read, Write, TimeoutRead}, time};
+use super::{
+    flash,
+    serial::{Read, TimeoutRead, Write},
+    time,
+};
+
+pub type NullAddress = usize;
 
 pub struct NullSerial;
 
+#[derive(Copy, Clone, Debug)]
+pub struct NullError;
+
 impl Read for NullSerial {
-    type Error = !;
+    type Error = NullError;
     fn read(&mut self) -> nb::Result<u8, Self::Error> { unimplemented!() }
 }
 
 impl Write for NullSerial {
-    type Error = !;
+    type Error = NullError;
 
     fn write_str(&mut self, _: &str) -> Result<(), Self::Error> { unimplemented!() }
 }
 
 impl TimeoutRead for NullSerial {
-    type Error = !;
-    fn read<T: Copy + Into<super::time::Milliseconds>>(&mut self, _: T) -> Result<u8, Self::Error> { unimplemented!() }
+    type Error = NullError;
+    fn read<T: Copy + Into<super::time::Milliseconds>>(&mut self, _: T) -> Result<u8, Self::Error> {
+        unimplemented!()
+    }
 }
 
 pub struct NullFlash;
 
 impl flash::ReadWrite for NullFlash {
-    type Error = !;
-    type Address = usize;
+    type Error = NullError;
+    type Address = NullAddress;
 
-    fn label() -> &'static str { unimplemented!(); }
-    fn read(&mut self, _: Self::Address, _: &mut [u8]) -> nb::Result<(), Self::Error> { unimplemented!() }
-    fn write(&mut self, _: Self::Address, _: &[u8]) -> nb::Result<(), Self::Error> { unimplemented!() }
+    fn label() -> &'static str {
+        unimplemented!();
+    }
+    fn read(&mut self, _: Self::Address, _: &mut [u8]) -> nb::Result<(), Self::Error> {
+        unimplemented!()
+    }
+    fn write(&mut self, _: Self::Address, _: &[u8]) -> nb::Result<(), Self::Error> {
+        unimplemented!()
+    }
     fn range(&self) -> (Self::Address, Self::Address) { unimplemented!() }
     fn erase(&mut self) -> nb::Result<(), Self::Error> { unimplemented!() }
-    fn write_from_blocks<I: Iterator<Item = [u8; N]>, const N: usize>( &mut self, _: Self::Address, _: I, )
-        -> Result<(), Self::Error> { unimplemented!() }
+    fn write_from_blocks<I: Iterator<Item = [u8; N]>, const N: usize>(
+        &mut self,
+        _: Self::Address,
+        _: I,
+    ) -> Result<(), Self::Error> {
+        unimplemented!()
+    }
 }
 
 pub struct NullSystick;
