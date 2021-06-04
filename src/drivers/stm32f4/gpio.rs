@@ -63,7 +63,7 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
 // Typestate generator for all Alternate Functions
 #[macro_export(local_inner_macros)]
 macro_rules! alternate_functions {
-    ($($i:expr, )+) => { $( paste::item! {
+    ($($i:expr, )+) => { $( $crate::paste::item! {
         /// Alternate function (Pin type state)
         pub struct [<AF $i>];
     } )+ }
@@ -82,7 +82,7 @@ macro_rules! pin_rows {
 #[allow(unused)]
 #[macro_export(local_inner_macros)]
 macro_rules! pin_row {
-    ($x:ident, [$($i:expr,)+]) => { $( paste::item! {
+    ($x:ident, [$($i:expr,)+]) => { $( $crate::paste::item! {
         /// Pin with a MODE typestate
         pub struct [<P $x $i>]<MODE> {
             _mode: core::marker::PhantomData<MODE>,
@@ -109,16 +109,16 @@ macro_rules! pin_row {
 #[macro_export]
 macro_rules! gpio {
     ($x: ident, [
-        $( ($i:expr, $default_mode:ty $(as $function:ident$(<$T:ident>)?)?), )+
+        $( ($i:expr, $default_mode:ty $(as $function:ident$(<$T:ident>)?)?), )*
     ]) => {
 
         // Macro black magic. the "paste" crate generates a context where anything bounded by "[<"
         // and ">]" delimiters gets concatenated in a single identifier post macro expansion. For
         // example, "[<GPIO $x>]" becomes "GPIOa" when "$x" represents "a". This is used to
         // expand the outer level, simplified "gpio!" instantiation macro into the complex one.
-        paste::item! {
+        $crate::paste::item! {
             gpio_inner!([<GPIO $x>], [<gpio $x>], [<gpio $x en>], [<gpio $x rst>], [<P $x x>], [
-                $( [<P $x $i>]: ([<p $x $i>], $i, $default_mode, $([<Earmark $x $i>], $function$(<$T>)?)?), )+
+                $( [<P $x $i>]: ([<p $x $i>], $i, $default_mode, $([<Earmark $x $i>], $function$(<$T>)?)?), )*
             ]);
         }
     }
@@ -126,7 +126,7 @@ macro_rules! gpio {
 
 #[macro_export(local_inner_macros)]
 macro_rules! into_af {
-    ($GPIOx:ident, $i:expr, $Pxi:ident, $pxi:ident, [$($af_i:expr, )+]) => { $( paste::item! {
+    ($GPIOx:ident, $i:expr, $Pxi:ident, $pxi:ident, [$($af_i:expr, )+]) => { $( $crate::paste::item! {
         pub fn [<into_af $af_i>](self) -> $Pxi<[<AF $af_i>]> {
             let offset = 2 * $i;
 
@@ -171,7 +171,7 @@ macro_rules! into_af {
 
 #[macro_export(local_inner_macros)]
 macro_rules! new_af {
-    ($GPIOx:ident, $i:expr, $Pxi:ident, $pxi:ident, [$($af_i:expr, )+]) => { $( paste::item! {
+    ($GPIOx:ident, $i:expr, $Pxi:ident, $pxi:ident, [$($af_i:expr, )+]) => { $( $crate::paste::item! {
         impl $Pxi<[<AF $af_i>]> {
             #[allow(dead_code)]
             fn new() -> Self {
@@ -185,14 +185,14 @@ macro_rules! new_af {
 #[macro_export(local_inner_macros)]
 macro_rules! gpio_inner {
     ($GPIOx:ident, $gpiox:ident, $enable_pin:ident, $reset_pin:ident, $Pxx:ident, [
-        $($Pxi:ident: ($pxi:ident, $i:expr, $default_mode:ty, $($earmark:ident, $function:ident$(<$T:ident>)?)?), )+
+        $($Pxi:ident: ($pxi:ident, $i:expr, $default_mode:ty, $($earmark:ident, $function:ident$(<$T:ident>)?)?), )*
     ]) => {
 
         /// GPIO
         pub mod $gpiox {
             use core::marker::PhantomData;
             use blue_hal::hal::gpio::{OutputPin, InputPin};
-            use crate::ports::pin_configuration::*;
+            use super::*;
 
             // Lower case for identifier concatenation
             #[allow(unused_imports)]
@@ -222,7 +222,7 @@ macro_rules! gpio_inner {
                 $(
                     /// Pin
                     pub $pxi: $Pxi<$default_mode>,
-                )+
+                )*
             }
 
             impl GpioExt for $GPIOx {
@@ -235,10 +235,10 @@ macro_rules! gpio_inner {
 
                     $(
                         let $pxi = $Pxi::<$default_mode>::new();
-                    )+
+                    )*
 
                     GpioWrapper {
-                        $($pxi,)+
+                        $($pxi,)*
                     }
                 }
             }
@@ -508,7 +508,7 @@ macro_rules! gpio_inner {
                     !self.is_high()
                 }
             }
-            )+
+            )*
         }
     }
 }

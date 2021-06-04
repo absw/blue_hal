@@ -81,16 +81,15 @@ impl<MODE, const PORT: char, const INDEX: u8> Pin<MODE, PORT, INDEX> {
 
     fn set_mode(mode: Mode) {
         let offset = (4 * INDEX) % 32;
-        // Safety: We can interact with the GPIO register block, as we promise
-        // we only modify bits related to this specific pin and port, and nothing
-        // else has control over those bits.
         let high_register_threshold = 8u8;
         let mask = Mode::Mask as u32;
         let mode = mode as u32;
 
-        // Safety: See above. Also, unsafe access is required to write multiple bits,
-        // as the compiler cannot guarantee the bits written are the correct ones not
-        // to leave the chip in an undefined state. Must be verified my manual review.
+        // Safety: We can interact with the GPIO register block, as we promise we only modify bits
+        // related to this specific pin and port, and nothing else has control over those bits.
+        // Also, unsafe access is required to write multiple bits, as the compiler cannot guarantee
+        // the bits written are the correct ones not to leave the chip in an undefined state. Must
+        // be verified my manual review.
         unsafe {
             if INDEX >= high_register_threshold {
                 gpio_modify!(PORT, modeh, |r, w| {

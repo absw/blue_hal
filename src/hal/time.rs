@@ -10,8 +10,10 @@ use marker_blanket::marker_blanket;
 /// Any implementer of Instant can be added with
 /// milliseconds to obtain another instant.
 #[marker_blanket]
-pub trait Instant: Copy + Clone + Subtracts<Output = Milliseconds> + Adds<Milliseconds, Output = Self>
-{}
+pub trait Instant:
+    Copy + Clone + Subtracts<Output = Milliseconds> + Adds<Milliseconds, Output = Self>
+{
+}
 
 pub trait Now {
     type I: Instant;

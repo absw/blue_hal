@@ -12,7 +12,6 @@ version = "0.1.0"
 default = [
    "defmt-default",
 ]
-stm32f412_discovery = ["stm32f412"]
 stm32f429 = ["stm32f4/stm32f429", "stm32f4_any"]
 stm32f469 = ["stm32f4/stm32f469", "stm32f4_any"]
 stm32f407 = ["stm32f4/stm32f407", "stm32f4_any"]
@@ -31,8 +30,8 @@ defmt-warn = []
 defmt-error = []
 
 [dependencies]
-cortex-m = "0.6.4"
-cortex-m-rt = "0.6.13"
+cortex-m = "0.7.2"
+cortex-m-rt = "0.6.7"
 cortex-m-semihosting = "0.3.7"
 nb = "1.0.0"
 paste = "1.0.4"
