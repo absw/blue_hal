@@ -12,7 +12,6 @@ version = "0.1.0"
 default = [
    "defmt-default",
 ]
-stm32f412_discovery = ["stm32f412"]
 stm32f429 = ["stm32f4/stm32f429", "stm32f4_any"]
 stm32f469 = ["stm32f4/stm32f469", "stm32f4_any"]
 stm32f407 = ["stm32f4/stm32f407", "stm32f4_any"]

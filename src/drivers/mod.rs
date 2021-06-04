@@ -32,7 +32,7 @@ pub mod efm32gg11b {
 pub mod led;
 
 /// Drivers for the Micron manufacturer (e.g. external flash).
-#[cfg(feature = "stm32f412_discovery")]
+#[cfg(feature = "stm32f412")]
 pub mod micron {
     /// N25Q128A external flash chip
     pub mod n25q128a_flash;
