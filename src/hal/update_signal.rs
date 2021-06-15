@@ -1,4 +1,15 @@
+/// Indicates the state of an update signal.
+pub enum UpdateSignalResult {
+    /// Do not update.
+    None,
+
+    /// Allow updates, if one is available.
+    Any,
+
+    /// Update using a specifc branch.
+    Index(u32), // TODO: Use proper type for image bank.
+}
+
 pub trait UpdateSignal {
-    // TODO: Return Option<Bank> for specifying which specific bank to boot from.
-    fn should_update(&self) -> bool;
+    fn should_update(&self) -> UpdateSignalResult;
 }
