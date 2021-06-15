@@ -2,6 +2,7 @@ use super::{
     flash,
     serial::{Read, TimeoutRead, Write},
     time,
+    update_signal::UpdateSignal,
 };
 
 pub type NullAddress = usize;
@@ -74,4 +75,10 @@ impl<T: Into<time::Milliseconds>> core::ops::Add<T> for NullInstant {
 impl time::Now for NullSystick {
     type I = NullInstant;
     fn now() -> Self::I { unimplemented!() }
+}
+
+pub struct NullUpdateSignal;
+
+impl UpdateSignal for NullUpdateSignal {
+    fn should_update(&self) -> bool { true }
 }
