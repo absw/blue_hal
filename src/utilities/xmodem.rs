@@ -1,4 +1,4 @@
-//! Xmodem parser.
+//! Xmodem protocol parser.
 
 use core::convert::TryInto;
 use nom::{
