@@ -16,7 +16,6 @@ pub mod stm32f4 {
     pub mod serial;
     pub mod spi;
     pub mod systick;
-    pub mod update_signal;
 }
 
 #[cfg(feature = "efm32gg11b_any")]

@@ -10,7 +10,6 @@ pub mod serial;
 pub mod spi;
 pub mod time;
 pub mod null;
-pub mod update_signal;
 
 #[cfg(not(target_arch = "arm"))]
 #[doc(hidden)]
