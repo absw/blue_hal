@@ -1,3 +1,5 @@
+//! Interface to a QSPI peripheral.
+
 /// Quad SPI configured in Indirect mode.
 ///
 /// Indirect mode forces all communication to occur through writes

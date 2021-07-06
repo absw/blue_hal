@@ -1,7 +1,11 @@
+//! Utilities for manipulating memory buffers.
+
+/// Collects an iterator into a mutable slice of its item type.
 pub trait CollectSlice: Iterator {
     fn collect_slice(&mut self, slice: &mut [Self::Item]) -> usize;
 }
 
+/// Fallibly collects an iterator into a mutable slice of its item type.
 pub trait TryCollectSlice: Iterator {
     type Element;
     type Error;
