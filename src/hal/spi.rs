@@ -1,3 +1,4 @@
+/// Full duplex SPI abstraction (able to transmit and receive at the same time).
 pub trait FullDuplex<WORD> {
     type Error;
 
