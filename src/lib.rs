@@ -1,8 +1,5 @@
 //! # Blue Hal
-//!
-//! Rusty drivers and HAL developed in-house at Bluefruit
 #![feature(never_type)]
-#![feature(bool_to_option)]
 #![feature(associated_type_bounds)]
 #![feature(stmt_expr_attributes)]
 #![cfg_attr(test, allow(unused_imports))]
@@ -23,15 +20,15 @@ pub use efm32gg11b as efm32pac;
 #[macro_use]
 pub mod utilities {
     pub mod bitwise;
-    pub mod iterator;
-    pub mod memory;
-    pub mod guard;
     pub mod buffer;
-    pub mod xmodem;
-    pub mod safety;
+    pub mod guard;
+    pub mod iterator;
     mod macros;
+    pub mod memory;
+    pub mod safety;
+    pub mod xmodem;
 }
 
 pub use paste;
-pub mod hal;
 pub mod drivers;
+pub mod hal;
