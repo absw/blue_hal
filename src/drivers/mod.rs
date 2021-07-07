@@ -18,10 +18,21 @@ pub mod stm32f4 {
     pub mod systick;
 }
 
+#[cfg(feature = "efm32gg11b_any")]
+#[macro_use]
+pub mod efm32gg11b {
+    #[macro_use]
+    pub mod gpio;
+    #[macro_use]
+    pub mod serial;
+    pub mod flash;
+    pub mod clocks;
+}
+
 pub mod led;
 
 /// Drivers for the Micron manufacturer (e.g. external flash).
-#[cfg(feature = "stm32f412_discovery")]
+#[cfg(feature = "stm32f412")]
 pub mod micron {
     /// N25Q128A external flash chip
     pub mod n25q128a_flash;

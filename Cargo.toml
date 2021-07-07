@@ -10,10 +10,8 @@ version = "0.1.0"
 
 [features]
 default = [
-   "stm32f412_discovery",
    "defmt-default",
 ]
-stm32f412_discovery = ["stm32f412"]
 stm32f429 = ["stm32f4/stm32f429", "stm32f4_any"]
 stm32f469 = ["stm32f4/stm32f469", "stm32f4_any"]
 stm32f407 = ["stm32f4/stm32f407", "stm32f4_any"]
@@ -21,6 +19,8 @@ stm32f412 = ["stm32f4/stm32f412", "stm32f4_any"]
 stm32f4_any = ["stm32_any"]
 stm32_any = ["cortex_m_any"]
 cortex_m_any = []
+wgm160p = ["efm32gg11b_any"]
+efm32gg11b_any = ["efm32gg11b", "cortex_m_any"]
 
 defmt-default = []
 defmt-trace = []
@@ -30,8 +30,8 @@ defmt-warn = []
 defmt-error = []
 
 [dependencies]
-cortex-m = "0.6.4"
-cortex-m-rt = "0.6.13"
+cortex-m = "0.7.2"
+cortex-m-rt = "0.6.7"
 cortex-m-semihosting = "0.3.7"
 nb = "1.0.0"
 paste = "1.0.4"
@@ -39,6 +39,7 @@ static_assertions = "1.1.0"
 defmt = "0.2"
 defmt-rtt = "0.2"
 marker-blanket = "0.1"
+bytemuck = "1.5.1"
 
 [dependencies.nom]
 version = "6.0.1"
@@ -53,7 +54,13 @@ version = "1.8.1"
 default-features = false
 
 [dependencies.stm32f4]
+optional = true
 version = "0.12.1"
+features = ["rt"]
+
+[dependencies.efm32gg11b]
+optional = true
+git = "https://github.com/pablo-mansanet-bluefruit/efm32gg11b-hal.git"
 features = ["rt"]
 
 [lib]
