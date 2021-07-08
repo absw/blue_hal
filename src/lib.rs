@@ -2,6 +2,7 @@
 #![feature(never_type)]
 #![feature(associated_type_bounds)]
 #![feature(stmt_expr_attributes)]
+#![feature(bool_to_option)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]
 
