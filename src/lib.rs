@@ -25,7 +25,6 @@ pub mod utilities {
     pub mod iterator;
     mod macros;
     pub mod memory;
-    pub mod safety;
     pub mod xmodem;
 }
 
