@@ -7,6 +7,7 @@ repository = "https://github.com/absw/blue_hal"
 readme = "README.md"
 keywords = ["embedded", "hal", "cortex", "bare_metal"]
 categories = ["embedded", "no-std"]
+license = "MIT"
 
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
@@ -64,7 +65,7 @@ features = ["rt"]
 
 [dependencies.efm32gg11b]
 optional = true
-git = "https://github.com/pablo-mansanet-bluefruit/efm32gg11b-hal.git"
+version = "0.1.0"
 features = ["rt"]
 
 [lib]
