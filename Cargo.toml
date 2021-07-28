@@ -16,8 +16,10 @@ license = "MIT"
 [features]
 default = [
    "defmt-default",
+   "stm32f446",
 ]
 stm32f429 = ["stm32f4/stm32f429", "stm32f4_any"]
+stm32f446 = ["stm32f4/stm32f446", "stm32f4_any"]
 stm32f469 = ["stm32f4/stm32f469", "stm32f4_any"]
 stm32f407 = ["stm32f4/stm32f407", "stm32f4_any"]
 stm32f412 = ["stm32f4/stm32f412", "stm32f4_any"]

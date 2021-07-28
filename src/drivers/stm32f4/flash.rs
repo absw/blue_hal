@@ -364,6 +364,8 @@ impl ReadWrite for McuFlash {
         let mut transfer_array = [0x00u8; TRANSFER_SIZE];
         let mut memory_index = 0usize;
 
+        defmt::info!("Writing from blocks");
+
         for block in blocks {
             let slice = &mut transfer_array
                 [(memory_index % TRANSFER_SIZE)..((memory_index % TRANSFER_SIZE) + N)];
