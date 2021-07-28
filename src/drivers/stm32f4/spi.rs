@@ -22,13 +22,13 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
 #[macro_export(local_inner_macros)]
 macro_rules! enable_spi { () => {
     pub type SpiAf = AF5;
-    #[cfg(feature = "stm32f412")]
+    #[cfg(any(feature = "stm32f412", feature = "stm32f446"))]
     seal_pins!(blue_hal::drivers::stm32f4::spi::NssPin<blue_hal::stm32pac::SPI1>: [Pa4<SpiAf>, Pa15<SpiAf>,]);
-    #[cfg(feature = "stm32f412")]
+    #[cfg(any(feature = "stm32f412", feature = "stm32f446"))]
     seal_pins!(blue_hal::drivers::stm32f4::spi::SckPin<blue_hal::stm32pac::SPI1>: [Pa5<SpiAf>, Pb3<SpiAf>,]);
-    #[cfg(feature = "stm32f412")]
+    #[cfg(any(feature = "stm32f412", feature = "stm32f446"))]
     seal_pins!(blue_hal::drivers::stm32f4::spi::MisoPin<blue_hal::stm32pac::SPI1>: [Pa6<SpiAf>, Pb4<SpiAf>,]);
-    #[cfg(feature = "stm32f412")]
+    #[cfg(any(feature = "stm32f412", feature = "stm32f446"))]
     seal_pins!(blue_hal::drivers::stm32f4::spi::MosiPin<blue_hal::stm32pac::SPI1>: [Pa7<SpiAf>, Pb5<SpiAf>,]);
 }}
 

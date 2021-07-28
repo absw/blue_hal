@@ -46,18 +46,19 @@ macro_rules! enable_serial { () => {
     // List of all pins capable of being configured as certain USART
     // functions. NOTE: This is not configuration! there's no need
     // to remove items from these lists once complete.
-    #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+    #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407", feature = "stm32f446"))]
     seal_pins!(TxPin<blue_hal::stm32pac::USART1>: [Pa9<AF7>, Pb6<AF7>,]);
     #[cfg(any(feature = "stm32f412"))]
     seal_pins!(TxPin<blue_hal::stm32pac::USART1>: [Pa9<AF7>, Pb6<AF7>, Pa15<AF6>,]);
 
-    #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+    #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407", feature = "stm32f446"))]
     seal_pins!(RxPin<blue_hal::stm32pac::USART1>: [Pb7<AF7>, Pa10<AF7>,]);
     #[cfg(any(feature = "stm32f412"))]
     seal_pins!(RxPin<blue_hal::stm32pac::USART1>: [Pb3<AF7>, Pb7<AF7>, Pa10<AF7>,]);
 
     #[cfg(any(
         feature = "stm32f469",
+        feature = "stm32f446",
         feature = "stm32f429",
         feature = "stm32f407",
         feature = "stm32f412"
@@ -66,11 +67,17 @@ macro_rules! enable_serial { () => {
 
     #[cfg(any(
         feature = "stm32f469",
+        feature = "stm32f446",
         feature = "stm32f429",
         feature = "stm32f407",
         feature = "stm32f412"
     ))]
     seal_pins!(RxPin<blue_hal::stm32pac::USART2>: [Pa3<AF7>, Pd6<AF7>,]);
+
+    #[cfg(any(feature = "stm32f446"))]
+    seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pg14<AF8>,]);
+    #[cfg(any(feature = "stm32f446"))]
+    seal_pins!(RxPin<USART6>: [Pc7<AF8>, Pg9<AF8>,]);
 
     #[cfg(any(feature = "stm32f412"))]
     seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pa11<AF8>, Pg14<AF8>,]);
