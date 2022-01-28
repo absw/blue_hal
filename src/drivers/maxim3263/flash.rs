@@ -90,9 +90,7 @@ impl Flash {
 
     // Returns whether the flash controller is performing a read, write, or erase operation.
     fn is_busy(&self) -> bool {
-        self.flc.ctrl.read().write().bit_is_set()
-            || self.flc.ctrl.read().mass_erase().bit_is_set()
-            || self.flc.ctrl.read().page_erase().bit_is_set()
+        self.flc.ctrl.read().pending().bit_is_set()
     }
 
     fn wait_until_not_busy(&self) {
@@ -160,27 +158,24 @@ impl Flash {
             return Err(nb::Error::WouldBlock);
         }
 
-        let is_start_aligned = address.0 & 0b11 == 0;
-        let is_end_aligned = bytes.len() & 0b11 == 0;
+        let is_start_aligned = address.0 % 4 == 0;
+        let is_end_aligned = bytes.len() % 4 == 0;
         if !is_start_aligned || !is_end_aligned {
-            return Err(nb::Error::Other(Error::WriteFailed));
+            return Err(nb::Error::Other(Error::UnalignedAccess));
         }
 
         self.clear_errors();
 
         self.unlock_flash();
 
-        self.flc.faddr.write(|w| unsafe {
-            w.faddr().bits(address.0)
-        });
+        let addresses = (address.0..).step_by(4);
+        let words = bytes.chunks_exact(4).map(|b| u32::from_ne_bytes(b.try_into().unwrap()));
 
-        self.flc.ctrl.write(|w| w.auto_incre_mode().set_bit());
+        for (address, word) in addresses.zip(words) {
+            let old_value = unsafe { *(address as *const u32) };
 
-        for word in bytes.chunks_exact(4) {
-            let value = u32::from_ne_bytes(word.try_into().unwrap());
-            self.flc.fdata.write(|w| unsafe {
-                w.bits(value)
-            });
+            self.flc.faddr.write(|w| unsafe { w.bits(address) });
+            self.flc.fdata.write(|w| unsafe { w.bits(word) });
             self.flc.ctrl.write(|w| w.write().set_bit());
             self.wait_until_not_busy();
         }
