@@ -1,7 +1,7 @@
 //! Internal flash controller for the MAX32630.
 
-use core::convert::TryInto;
 use core::ops::{Add, Sub};
+use core::convert::TryInto;
 use crate::{
     hal::flash::ReadWrite,
     utilities::memory::{IterableByOverlaps, Region},
@@ -82,6 +82,7 @@ impl Flash {
                 .en_merge_grab_gnt().set_bit()
                 .auto_tacc().set_bit()
                 .auto_clkdiv().set_bit()
+                .en_prevent_fail().set_bit()
         });
 
         Self { flc }
@@ -89,7 +90,9 @@ impl Flash {
 
     // Returns whether the flash controller is performing a read, write, or erase operation.
     fn is_busy(&self) -> bool {
-        self.flc.ctrl.read().pending().bit_is_set()
+        self.flc.ctrl.read().write().bit_is_set()
+            || self.flc.ctrl.read().mass_erase().bit_is_set()
+            || self.flc.ctrl.read().page_erase().bit_is_set()
     }
 
     fn wait_until_not_busy(&self) {
@@ -110,9 +113,13 @@ impl Flash {
         });
     }
 
-    fn erase_page(&mut self, page: Page) -> Result<(), Error> {
-        // NOTE: Since this is a private function, its assumed that the flash has already been
-        // unlocked before calling this and that the flash controller is not busy.
+    fn erase_page(&mut self, page: Page) -> nb::Result<(), Error> {
+        if self.is_busy() {
+            return Err(nb::Error::WouldBlock);
+        }
+
+        self.clear_errors();
+        self.unlock_flash();
 
         const PAGE_ERASE_CODE : u8 = 0x55;
         self.flc.ctrl.write(|w| unsafe {
@@ -128,10 +135,10 @@ impl Flash {
         });
 
         self.wait_until_not_busy();
-        let failed = self.read_failed_bit();
+        self.lock_flash();
 
-        if failed {
-            Err(Error::PageEraseFailed)
+        if self.read_failed_bit() {
+            Err(nb::Error::Other(Error::PageEraseFailed))
         } else {
             Ok(())
         }
@@ -140,39 +147,51 @@ impl Flash {
     /// Return the state of the failed bit, clearing it if set.
     fn read_failed_bit(&mut self) -> bool {
         let failed = self.flc.intr.read().failed_if().bit_is_set();
-
-        if failed {
-            self.flc.intr.write(|w| w.failed_if().bit(false));
-        }
-
-        return failed;
+        self.flc.intr.write(|w| w.failed_if().bit(false));
+        failed
     }
 
-    fn write_range(&mut self, address: Address, bytes: &[u8]) -> Result<(), Error> {
+    fn clear_errors(&mut self) {
+        self.flc.intr.write(|w| w.failed_if().bit(false));
+    }
+
+    fn write_range(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Error> {
+        if self.is_busy() {
+            return Err(nb::Error::WouldBlock);
+        }
+
         let is_start_aligned = address.0 & 0b11 == 0;
         let is_end_aligned = bytes.len() & 0b11 == 0;
         if !is_start_aligned || !is_end_aligned {
-            return Err(Error::WriteFailed);
+            return Err(nb::Error::Other(Error::WriteFailed));
         }
 
-        let addresses = (address.0 .. address.0 + bytes.len() as u32).step_by(4);
-        for (address, word) in addresses.zip(bytes.chunks_exact(4)) {
+        self.clear_errors();
+
+        self.unlock_flash();
+
+        self.flc.faddr.write(|w| unsafe {
+            w.faddr().bits(address.0)
+        });
+
+        self.flc.ctrl.write(|w| w.auto_incre_mode().set_bit());
+
+        for word in bytes.chunks_exact(4) {
             let value = u32::from_ne_bytes(word.try_into().unwrap());
-            self.flc.faddr.write(|w| unsafe {
-                w.faddr().bits(address as u32)
-            });
             self.flc.fdata.write(|w| unsafe {
                 w.bits(value)
             });
-            self.flc.ctrl.write(|w| w.write().bit(true));
-
+            self.flc.ctrl.write(|w| w.write().set_bit());
             self.wait_until_not_busy();
-            if self.read_failed_bit() {
-                return Err(Error::WriteFailed);
-            }
         }
 
-        Ok(())
+        self.lock_flash();
+
+        if self.read_failed_bit() {
+            Err(nb::Error::Other(Error::WriteFailed))
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -211,27 +230,31 @@ impl ReadWrite for Flash {
             return Err(nb::Error::Other(Error::UnalignedAccess));
         }
 
-        self.unlock_flash();
+        let (minimum_address, maximum_address) = self.range();
+        let is_valid_address = (address >= minimum_address) && (address + bytes.len() <= maximum_address);
+        if !is_valid_address {
+            return Err(nb::Error::Other(Error::AddressOutOfRange));
+        }
 
         for (block, page, address) in Map::pages().overlaps(bytes, address) {
             let page_data = &mut [0u8; PAGE_SIZE as usize];
             nb::block!(self.read(page.address(), page_data))?;
+
             let offset_into_page = address.0.saturating_sub(page.address().0) as usize;
             page_data
                 .iter_mut()
                 .skip(offset_into_page)
                 .zip(block)
                 .for_each(|(byte, input)| *byte = *input);
-            self.erase_page(page)?;
-            self.write_range(page.address(), page_data)?;
+            nb::block!(self.erase_page(page))?;
+            nb::block!(self.write_range(page.address(), page_data))?;
         }
 
-        self.lock_flash();
         Ok(())
     }
 
     fn range(&self) -> (Self::Address, Self::Address) {
-        (Address(0x0000_0000), Address(0x0020_0000))
+        (Address(0x0000_0000), Address(PAGE_SIZE * PAGE_COUNT))
     }
 
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
@@ -239,6 +262,7 @@ impl ReadWrite for Flash {
             return Err(nb::Error::WouldBlock);
         }
 
+        self.clear_errors();
         self.unlock_flash();
 
         const MASS_ERASE_CODE : u8 = 0xAA;
@@ -246,12 +270,13 @@ impl ReadWrite for Flash {
             w.erase_code().bits(MASS_ERASE_CODE)
         });
 
-        // Start mass erase operation.
         self.flc.ctrl.write(|w| w.mass_erase().set_bit());
+
         self.wait_until_not_busy();
 
-        let failed = self.read_failed_bit();
         self.lock_flash();
+
+        let failed = self.read_failed_bit();
 
         if failed {
             Err(nb::Error::Other(Error::MassEraseFailed))
@@ -262,9 +287,27 @@ impl ReadWrite for Flash {
 
     fn write_from_blocks<I: Iterator<Item = [u8; N]>, const N: usize>(
         &mut self,
-        _address: Self::Address,
-        _blocks: I,
+        address: Self::Address,
+        blocks: I,
     ) -> Result<(), Self::Error> {
-        todo!()
+        const TRANSFER_SIZE: usize = KB!(4);
+        assert!(TRANSFER_SIZE % N == 0);
+        let mut transfer_array = [0x00u8; TRANSFER_SIZE];
+        let mut memory_index = 0usize;
+
+        for block in blocks {
+            let slice = &mut transfer_array
+                [(memory_index % TRANSFER_SIZE)..((memory_index % TRANSFER_SIZE) + N)];
+            slice.clone_from_slice(&block);
+            memory_index += N;
+
+            if memory_index % TRANSFER_SIZE == 0 {
+                nb::block!(self.write(address + (memory_index - TRANSFER_SIZE), &transfer_array))?;
+                transfer_array.iter_mut().for_each(|b| *b = 0x00u8);
+            }
+        }
+        let remainder = &transfer_array[0..(memory_index % TRANSFER_SIZE)];
+        nb::block!(self.write(address + (memory_index - remainder.len()), &remainder))?;
+        Ok(())
     }
 }
