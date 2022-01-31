@@ -78,6 +78,9 @@ impl Flash {
     pub fn new(flc: max3263x::FLC) -> Self {
         flc.perform.write(|w| {
             w
+                .en_back2back_rds().set_bit()
+                .en_merge_grab_gnt().set_bit()
+                .auto_tacc().set_bit()
                 .auto_clkdiv().set_bit()
                 .en_prevent_fail().set_bit()
         });
