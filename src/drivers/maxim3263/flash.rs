@@ -76,21 +76,41 @@ impl Into<usize> for Address {
 
 impl Flash {
     pub fn new(flc: max3263x::FLC) -> Self {
+        assert!(
+            !flc.ctrl.read().write().bit_is_set()
+            && !flc.ctrl.read().mass_erase().bit_is_set()
+            && !flc.ctrl.read().page_erase().bit_is_set()
+        );
+
         flc.perform.write(|w| {
-            w
-                .en_back2back_rds().set_bit()
-                .en_merge_grab_gnt().set_bit()
-                .auto_tacc().set_bit()
-                .auto_clkdiv().set_bit()
-                .en_prevent_fail().set_bit()
+            w.auto_clkdiv().set_bit()
+            // .en_back2back_rds().set_bit()
+            // .en_merge_grab_gnt().set_bit()
+            // .auto_tacc().set_bit()
         });
+
+        flc.perform.write(|w| {
+            w.en_prevent_fail().set_bit()
+        });
+
+        // flc.fckdiv.write(|w| unsafe {
+        //     w.fckdiv().bits(96)
+        // });
 
         Self { flc }
     }
 
     // Returns whether the flash controller is performing a read, write, or erase operation.
     fn is_busy(&self) -> bool {
-        self.flc.ctrl.read().pending().bit_is_set()
+        // let addr = 0x4000_2140 as *const u32;
+        // let ctrl2 = unsafe { *addr };
+        // assert!(ctrl2 & (1 << 5) == 0);
+        // assert!(false);
+
+        // self.flc.ctrl.read().pending().bit_is_set()
+        self.flc.ctrl.read().write().bit_is_set()
+            || self.flc.ctrl.read().mass_erase().bit_is_set()
+            || self.flc.ctrl.read().page_erase().bit_is_set()
     }
 
     fn wait_until_not_busy(&self) {
@@ -100,8 +120,11 @@ impl Flash {
     /// Disable write and erase operations.
     fn lock_flash(&mut self) {
         self.flc.ctrl.write(|w| unsafe {
-            w.flsh_unlock().bits(0b0000)
+            w
+                .flsh_unlock().bits(0b0000)
+                .erase_code().bits(0x00)
         });
+        assert!(self.flc.ctrl.read().flsh_unlock().bits() == 0);
     }
 
     /// Enable write and erase operations.
@@ -109,6 +132,7 @@ impl Flash {
         self.flc.ctrl.write(|w| unsafe {
             w.flsh_unlock().bits(0b0010)
         });
+        assert!(self.flc.ctrl.read().flsh_unlock().bits() == 2);
     }
 
     fn erase_page(&mut self, page: Page) -> nb::Result<(), Error> {
@@ -125,7 +149,7 @@ impl Flash {
         });
 
         self.flc.faddr.write(|w| unsafe {
-            w.faddr().bits(page.address().0 as u32)
+            w.faddr().bits(page.address().0)
         });
 
         self.flc.ctrl.write(|w| {
@@ -134,6 +158,10 @@ impl Flash {
 
         self.wait_until_not_busy();
         self.lock_flash();
+
+        let address = page.address().0 as *const u32;
+        let value = unsafe { *address };
+        assert!(value == 0xFFFFFFFF, "address = {:?}, value = {:08x}", address, value);
 
         if self.read_failed_bit() {
             Err(nb::Error::Other(Error::PageEraseFailed))
@@ -168,6 +196,26 @@ impl Flash {
 
         self.unlock_flash();
 
+        assert!(self.flc.ctrl.read().write_enable().bit_is_set());
+
+        // self.flc.ctrl.write(|w| w.auto_incre_mode().set_bit());
+        // MXC_FLC->ctrl |= MXC_F_FLC_CTRL_AUTO_INCRE_MODE;
+
+        // MXC_FLC->faddr = address;
+        // self.flc.faddr.write(|w| unsafe {
+        //     w.faddr().bits(address.0)
+        // });
+
+        // /* Set the address to write and enable auto increment */
+        // uint32_t write_cmd = MXC_FLC->ctrl | MXC_F_FLC_CTRL_WRITE;
+
+        // for (; length > 0; length -= 4) {
+        //     /* Perform the write */
+        //     MXC_FLC->fdata = *ptr++;
+        //     MXC_FLC->ctrl = write_cmd;
+        //     while (FLC_Busy());
+        // }
+
         let addresses = (address.0..).step_by(4);
         let words = bytes.chunks_exact(4).map(|b| u32::from_ne_bytes(b.try_into().unwrap()));
 
@@ -178,7 +226,22 @@ impl Flash {
             self.flc.fdata.write(|w| unsafe { w.bits(word) });
             self.flc.ctrl.write(|w| w.write().set_bit());
             self.wait_until_not_busy();
+            assert!(!self.read_failed_bit(), "Failed to write 0x{:08x} to 0x{:08x} (from 0x{:08x}).", word, address, old_value);
         }
+
+        // for word in bytes.chunks_exact(4) {
+        //     let value = u32::from_ne_bytes(word.try_into().unwrap());
+
+        //     assert!(!self.read_failed_bit());
+        //     self.flc.fdata.write(|w| unsafe {
+        //         w.bits(value)
+        //     });
+        //     assert!(!self.read_failed_bit());
+        //     self.flc.ctrl.write(|w| w.write().set_bit());
+        //     assert!(!self.read_failed_bit());
+        //     self.wait_until_not_busy();
+        //     assert!(!self.read_failed_bit());
+        // }
 
         self.lock_flash();
 
