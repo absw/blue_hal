@@ -74,8 +74,19 @@ impl Into<usize> for Address {
     fn into(self) -> usize { self.0 as usize }
 }
 
+extern "C" {
+    fn FLC_Init() -> i32;
+    fn FLC_PageErase(address: u32, erase_code: u8, unlock_key: u8) -> i32;
+    fn FLC_Write(address: u32, data: *const u8, length: u32, unlock_key: u8) -> i32;
+}
+
 impl Flash {
     pub fn new(flc: max3263x::FLC) -> Self {
+        // let error = unsafe { FLC_Init() };
+        // assert!(error == 0);
+
+        // Self { flc }
+
         assert!(
             !flc.ctrl.read().write().bit_is_set()
             && !flc.ctrl.read().mass_erase().bit_is_set()
@@ -102,12 +113,6 @@ impl Flash {
 
     // Returns whether the flash controller is performing a read, write, or erase operation.
     fn is_busy(&self) -> bool {
-        // let addr = 0x4000_2140 as *const u32;
-        // let ctrl2 = unsafe { *addr };
-        // assert!(ctrl2 & (1 << 5) == 0);
-        // assert!(false);
-
-        // self.flc.ctrl.read().pending().bit_is_set()
         self.flc.ctrl.read().write().bit_is_set()
             || self.flc.ctrl.read().mass_erase().bit_is_set()
             || self.flc.ctrl.read().page_erase().bit_is_set()
@@ -136,37 +141,39 @@ impl Flash {
     }
 
     fn erase_page(&mut self, page: Page) -> nb::Result<(), Error> {
-        if self.is_busy() {
-            return Err(nb::Error::WouldBlock);
-        }
+        unsafe {
+            if self.is_busy() {
+                return Err(nb::Error::WouldBlock);
+            }
 
-        self.clear_errors();
-        self.unlock_flash();
+            const FLC_ADDR : *mut u32 = 0x4000_2000 as *mut u32;
+            const FLC_CTRL : *mut u32 = 0x4000_2008 as *mut u32;
+            const FLC_INTR : *mut u32 = 0x4000_2024 as *mut u32;
+            const FLC_INTR_FAILED_IF : u32 = 1 << 1;
+            const FLC_CTRL_FLSH_UNLOCK : u32 = 0xF << 28;
+            const FLC_CTRL_ERASE_CODE : u32 = 0xFF << 8;
+            const FLC_CTRL_PAGE_ERASE : u32 = 1 << 2;
+            const UNLOCK_KEY : u32 = 2;
+            const ERASE_CODE : u32 = 0x55;
 
-        const PAGE_ERASE_CODE : u8 = 0x55;
-        self.flc.ctrl.write(|w| unsafe {
-            w.erase_code().bits(PAGE_ERASE_CODE)
-        });
+            *FLC_INTR &= !FLC_INTR_FAILED_IF;
+            *FLC_CTRL = (*FLC_CTRL & !FLC_CTRL_FLSH_UNLOCK) |
+                ((UNLOCK_KEY << 28) & FLC_CTRL_FLSH_UNLOCK);
+            *FLC_CTRL = (*FLC_CTRL & !FLC_CTRL_ERASE_CODE) |
+                ((ERASE_CODE << 8) & FLC_CTRL_ERASE_CODE);
+            *FLC_ADDR = page.address().0;
+            *FLC_CTRL |= FLC_CTRL_PAGE_ERASE;
 
-        self.flc.faddr.write(|w| unsafe {
-            w.faddr().bits(page.address().0)
-        });
+            self.wait_until_not_busy();
 
-        self.flc.ctrl.write(|w| {
-            w.page_erase().set_bit()
-        });
+            *FLC_CTRL &= !(FLC_CTRL_FLSH_UNLOCK | FLC_CTRL_ERASE_CODE);
 
-        self.wait_until_not_busy();
-        self.lock_flash();
-
-        let address = page.address().0 as *const u32;
-        let value = unsafe { *address };
-        assert!(value == 0xFFFFFFFF, "address = {:?}, value = {:08x}", address, value);
-
-        if self.read_failed_bit() {
-            Err(nb::Error::Other(Error::PageEraseFailed))
-        } else {
-            Ok(())
+            if (*FLC_INTR & FLC_INTR_FAILED_IF) != 0 {
+                *FLC_INTR &= !FLC_INTR_FAILED_IF;
+                Err(nb::Error::Other(Error::PageEraseFailed))
+            } else {
+                Ok(())
+            }
         }
     }
 
