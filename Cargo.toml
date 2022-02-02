@@ -18,10 +18,15 @@ stm32f407 = ["stm32f4/stm32f407", "stm32f4_any"]
 stm32f412 = ["stm32f4/stm32f412", "stm32f4_any"]
 stm32f4_any = ["stm32_any"]
 stm32_any = ["cortex_m_any"]
-maxim3263 = ["max3263x", "cortex_m_any"]
-cortex_m_any = []
+
 wgm160p = ["efm32gg11b_any"]
 efm32gg11b_any = ["efm32gg11b", "cortex_m_any"]
+
+max32631 = ["max3263x", "max3263_any"]
+max3263_any = ["max32_any"]
+max32_any = ["cortex_m_any"]
+
+cortex_m_any = []
 
 defmt-default = []
 defmt-trace = []

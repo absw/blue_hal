@@ -29,9 +29,9 @@ pub mod efm32gg11b {
     pub mod clocks;
 }
 
-#[cfg(feature = "maxim3263")]
+#[cfg(feature = "max3263_any")]
 #[macro_use]
-pub mod maxim3263 {
+pub mod max3263 {
     pub mod flash;
 }
 

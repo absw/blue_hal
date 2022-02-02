@@ -1,4 +1,4 @@
-//! Internal flash controller for the MAX32630.
+//! Internal flash controller for MAX3263 family.
 
 use core::ops::{Add, Sub};
 use core::convert::TryInto;
@@ -7,7 +7,7 @@ use crate::{
     utilities::memory::{IterableByOverlaps, Region},
 };
 
-const PAGE_SIZE : u32 = 0x2000;
+const PAGE_SIZE : u32 = KB!(8);
 const PAGE_COUNT : u32 = 256;
 
 pub struct Flash {
@@ -196,7 +196,7 @@ impl ReadWrite for Flash {
     type Error = Error;
     type Address = Address;
 
-    fn label() -> &'static str { "maxim3263x flash (internal)" }
+    fn label() -> &'static str { "MAX3263 flash (internal)" }
 
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         let (minimum_address, maximum_address) = self.range();
