@@ -131,7 +131,7 @@ impl Flash {
             w.faddr().bits(page.address().0)
         });
 
-        self.flc.ctrl.modify(|_, w| unsafe {
+        self.flc.ctrl.modify(|_, w| {
             w.page_erase().bit(true)
         });
 
@@ -174,8 +174,6 @@ impl Flash {
         let words = bytes.chunks_exact(4).map(|b| u32::from_ne_bytes(b.try_into().unwrap()));
 
         for (address, word) in addresses.zip(words) {
-            let old_value = unsafe { *(address as *const u32) };
-
             self.flc.faddr.write(|w| unsafe { w.bits(address) });
             self.flc.fdata.write(|w| unsafe { w.bits(word) });
             self.flc.ctrl.modify(|_, w| w.write().set_bit());
