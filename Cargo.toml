@@ -1,8 +1,13 @@
 [package]
 edition = "2018"
-readme = "README.md"
 name = "blue_hal"
-version = "0.1.0"
+version = "1.0.0"
+description = "Embedded Hardware Abstraction Layer"
+repository = "https://github.com/absw/blue_hal"
+readme = "README.md"
+keywords = ["embedded", "hal", "cortex", "bare_metal"]
+categories = ["embedded", "no-std"]
+license = "MIT"
 
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
@@ -13,6 +18,7 @@ default = [
    "defmt-default",
 ]
 stm32f429 = ["stm32f4/stm32f429", "stm32f4_any"]
+stm32f446 = ["stm32f4/stm32f446", "stm32f4_any"]
 stm32f469 = ["stm32f4/stm32f469", "stm32f4_any"]
 stm32f407 = ["stm32f4/stm32f407", "stm32f4_any"]
 stm32f412 = ["stm32f4/stm32f412", "stm32f4_any"]
@@ -66,7 +72,7 @@ features = ["rt"]
 
 [dependencies.efm32gg11b]
 optional = true
-git = "https://github.com/pablo-mansanet-bluefruit/efm32gg11b-hal.git"
+version = "0.1.0"
 features = ["rt"]
 
 [dependencies.max3263x]
