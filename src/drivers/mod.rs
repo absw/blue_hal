@@ -29,6 +29,12 @@ pub mod efm32gg11b {
     pub mod clocks;
 }
 
+#[cfg(feature = "max3263_any")]
+#[macro_use]
+pub mod max3263 {
+    pub mod flash;
+}
+
 pub mod led;
 
 /// Drivers for the Micron manufacturer (e.g. external flash).
