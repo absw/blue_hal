@@ -71,11 +71,13 @@ pub struct MemoryMap {
     sectors: [Sector; SECTOR_NUMBER],
 }
 
-///From [section 3.5.1](../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=62)
 const UNLOCK_KEYS: [u32; 2] = [0x45670123, 0xCDEF89AB];
 
 #[cfg(feature = "stm32f412")]
 const SECTOR_NUMBER: usize = 15;
+
+#[cfg(feature = "stm32f446")]
+const SECTOR_NUMBER: usize = 11;
 
 #[cfg(feature = "stm32f412")]
 const MEMORY_MAP: MemoryMap = MemoryMap {
@@ -93,6 +95,23 @@ const MEMORY_MAP: MemoryMap = MemoryMap {
         Sector::new(Block::Main, Address(0x080C_0000), KB!(128)),
         Sector::new(Block::Main, Address(0x080E_0000), KB!(128)),
         Sector::new(Block::SystemMemory, Address(0x1FFF_0000), KB!(32)),
+        Sector::new(Block::OneTimeProgrammable, Address(0x1FFF_7800), 528),
+        Sector::new(Block::OptionBytes, Address(0x1FFF_C000), 16),
+    ],
+};
+
+#[cfg(feature = "stm32f446")]
+const MEMORY_MAP: MemoryMap = MemoryMap {
+    sectors: [
+        Sector::new(Block::Reserved, Address(0x0800_0000), KB!(16)),
+        Sector::new(Block::Reserved, Address(0x0800_4000), KB!(16)),
+        Sector::new(Block::Reserved, Address(0x0800_8000), KB!(16)),
+        Sector::new(Block::Reserved, Address(0x0800_C000), KB!(16)),
+        Sector::new(Block::Main, Address(0x0801_0000), KB!(64)),
+        Sector::new(Block::Main, Address(0x0802_0000), KB!(128)),
+        Sector::new(Block::Main, Address(0x0804_0000), KB!(128)),
+        Sector::new(Block::Main, Address(0x0806_0000), KB!(128)),
+        Sector::new(Block::SystemMemory, Address(0x1FFF_0000), KB!(30)),
         Sector::new(Block::OneTimeProgrammable, Address(0x1FFF_7800), 528),
         Sector::new(Block::OptionBytes, Address(0x1FFF_C000), 16),
     ],

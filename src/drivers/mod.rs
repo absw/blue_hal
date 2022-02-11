@@ -10,7 +10,7 @@
 pub mod stm32f4 {
     pub mod flash;
     pub mod gpio;
-    #[cfg(feature = "stm32f412")]
+    #[cfg(any(feature = "stm32f412", feature = "stm32f446"))]
     pub mod qspi;
     pub mod rcc;
     pub mod serial;

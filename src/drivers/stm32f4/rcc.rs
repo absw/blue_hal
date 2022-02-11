@@ -23,8 +23,8 @@ impl Clocks {
 
     pub fn sysclk(&self) -> Hertz { self.sysclk }
 
-    /// Harcoded values for the f412
-    #[cfg(feature = "stm32f412")]
+    /// Harcoded values for the f412, f446
+    #[cfg(any(feature = "stm32f412", feature = "stm32f446"))]
     pub fn hardcoded(rcc: RCC) -> Self {
         // NOTE(Safety): All unsafe blocks in this function refer to using the "bits()"
         // method for easy writing.

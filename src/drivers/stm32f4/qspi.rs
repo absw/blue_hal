@@ -46,6 +46,31 @@ macro_rules! enable_qspi { () => {
     seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io2Pin: [Pc4<AF10>, Pe9<AF10>, Pg9<AF9>,]);
     #[cfg(feature = "stm32f412")]
     seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io3Pin: [Pc5<AF10>, Pe10<AF10>, Pg14<AF9>,]);
+
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::ClkPin: [Pb2<AF9>, Pd3<AF9>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1CsPin: [Pb6<AF10>, Pg6<AF10>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2CsPin: [Pc11<AF9>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1Io0Pin: [Pc9<AF9>, Pd11<AF9>, Pf8<AF10>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1Io1Pin: [Pc10<AF9>, Pd12<AF9>, Pf9<AF10>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1Io2Pin: [Pe2<AF9>, Pf7<AF9>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk1Io3Pin: [Pa1<AF10>, Pd13<AF10>, Pf6<AF9>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io0Pin: [Pe7<AF10>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io1Pin: [Pe8<AF10>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io2Pin: [Pe9<AF10>, Pg9<AF9>,]);
+    #[cfg(feature = "stm32f446")]
+    seal_pins!(blue_hal::drivers::stm32f4::qspi::Bk2Io3Pin: [Pe10<AF10>, Pg14<AF9>,]);
+
+
 };}
 
 const MAX_DUMMY_CYCLES: u8 = 31;

@@ -2,6 +2,7 @@
 #![feature(never_type)]
 #![feature(associated_type_bounds)]
 #![feature(stmt_expr_attributes)]
+#![feature(bool_to_option)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]
 
@@ -13,6 +14,8 @@ pub use stm32f4::stm32f412 as stm32pac;
 pub use stm32f4::stm32f429 as stm32pac;
 #[cfg(feature = "stm32f469")]
 pub use stm32f4::stm32f469 as stm32pac;
+#[cfg(feature = "stm32f446")]
+pub use stm32f4::stm32f446 as stm32pac;
 
 #[cfg(feature = "efm32gg11b_any")]
 pub use efm32gg11b as efm32pac;
