@@ -1,7 +1,12 @@
-use crate::hal::flash::ReadWrite;
+use crate::hal::{qspi, flash::ReadWrite};
 use core::ops::{Add, Sub};
 
-pub struct Is25Lp128F {}
+pub struct Is25Lp128F<QSPI>
+where
+    QSPI: qspi::Indirect,
+{
+    _qspi: QSPI,
+}
 
 #[derive(Clone, Copy)]
 pub enum Error {}
@@ -28,13 +33,14 @@ impl Into<usize> for Address {
     fn into(self) -> usize { self.0 as usize }
 }
 
-impl Is25Lp128F {
-    pub fn new() -> Self {
-        Self {}
+impl<QSPI: qspi::Indirect> Is25Lp128F<QSPI> {
+    pub fn new(qspi: QSPI) -> Self {
+        Self { _qspi: qspi }
+        // TODO: verify flash id
     }
 }
 
-impl ReadWrite for Is25Lp128F {
+impl<QSPI: qspi::Indirect> ReadWrite for Is25Lp128F<QSPI> {
     type Error = Error;
     type Address = Address;
 
@@ -50,8 +56,8 @@ impl ReadWrite for Is25Lp128F {
         todo!()
     }
 
-    fn range(&self) -> (Self::Address, Self::Address) {
-        todo!()
+    fn range(&self) -> (Address, Address) {
+        (Address(0x0000_0000), Address(0x00FF_FFFF))
     }
 
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
