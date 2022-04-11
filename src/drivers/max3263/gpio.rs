@@ -1,26 +1,14 @@
 use core::marker::PhantomData;
 
-pub struct AF0 {}
-pub struct AF1 {}
-pub struct AF2 {}
-pub struct AF3 {}
-pub struct AF4 {}
-
-/// Declares multiple pin structs named by the provided identifiers. See `declare_pin_struct`.
+/// Declares multiple pin structs named by the provided identifiers. Each struct expects a type
+/// parameter bound by the `AlternativeFunction` trait.
 macro_rules! define_pin_structs {
     ($($name:ident),*) => {
         $(
-            define_pin_struct!($name);
+            pub struct $name<AF: AlternativeFunction> {
+                _phantom: PhantomData<AF>,
+            }
         )*
-    }
-}
-
-/// Declare an empty struct named `name` which takes a type parameter `AF`.
-macro_rules! define_pin_struct {
-    ($name:ident) => {
-        pub struct $name<AF> {
-            _phantom: PhantomData<AF>,
-        }
     }
 }
 
@@ -36,3 +24,19 @@ define_pin_structs!(
     P70, P71, P72, P73, P74, P75, P76, P77,
     P80, P81
 );
+
+pub struct AF0 {}
+pub struct AF1 {}
+pub struct AF2 {}
+pub struct AF3 {}
+pub struct AF4 {}
+
+/// Trait of types which represent alternative functions. The trait itself serves no purpose but to
+/// restrict which types can be used to represent the selected alternative function of a pin.
+pub unsafe trait AlternativeFunction {}
+
+unsafe impl AlternativeFunction for AF0 {}
+unsafe impl AlternativeFunction for AF4 {}
+unsafe impl AlternativeFunction for AF1 {}
+unsafe impl AlternativeFunction for AF2 {}
+unsafe impl AlternativeFunction for AF3 {}
