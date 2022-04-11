@@ -35,6 +35,9 @@ pub mod max3263 {
     pub mod flash;
 }
 
+#[cfg(feature = "max32631")]
+pub mod is25lp128f;
+
 pub mod led;
 
 /// Drivers for the Micron manufacturer (e.g. external flash).
