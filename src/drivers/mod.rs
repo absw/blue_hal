@@ -33,6 +33,8 @@ pub mod efm32gg11b {
 #[macro_use]
 pub mod max3263 {
     pub mod flash;
+    pub mod qspi;
+    pub mod gpio;
 }
 
 #[cfg(feature = "max32631")]
