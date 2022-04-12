@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 /// Declares multiple pin structs named by the provided identifiers. Each struct expects a type
 /// parameter bound by the `AlternativeFunction` trait.
 macro_rules! define_pin_structs {
-    ($($name:ident),*) => {
+    ($($name:ident),* $(,)?) => {
         $(
             pub struct $name<AF: AlternativeFunction> {
                 _phantom: PhantomData<AF>,
@@ -22,7 +22,7 @@ define_pin_structs!(
     P50, P51, P52, P53, P54, P55, P56, P57,
     P60, P61, P62, P63, P64, P65, P66, P67,
     P70, P71, P72, P73, P74, P75, P76, P77,
-    P80, P81
+    P80, P81,
 );
 
 pub struct AF0 {}
