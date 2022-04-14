@@ -1,11 +1,11 @@
-use crate::hal::{qspi, flash::ReadWrite};
+use crate::hal::{spi, flash::ReadWrite};
 use core::ops::{Add, Sub};
 
-pub struct Is25Lp128F<QSPI>
+pub struct Is25Lp128F<SPI>
 where
-    QSPI: qspi::Indirect,
+    SPI: spi::FullDuplex<u8>,
 {
-    _qspi: QSPI,
+    _spi: SPI,
 }
 
 #[derive(Clone, Copy)]
@@ -33,14 +33,14 @@ impl Into<usize> for Address {
     fn into(self) -> usize { self.0 as usize }
 }
 
-impl<QSPI: qspi::Indirect> Is25Lp128F<QSPI> {
-    pub fn new(qspi: QSPI) -> Self {
-        Self { _qspi: qspi }
+impl<SPI: spi::FullDuplex<u8>> Is25Lp128F<SPI> {
+    pub fn new(spi: SPI) -> Self {
+        Self { _spi: spi }
         // TODO: verify flash id
     }
 }
 
-impl<QSPI: qspi::Indirect> ReadWrite for Is25Lp128F<QSPI> {
+impl<SPI: spi::FullDuplex<u8>> ReadWrite for Is25Lp128F<SPI> {
     type Error = Error;
     type Address = Address;
 
