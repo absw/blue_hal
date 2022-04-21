@@ -2,12 +2,12 @@
 //!
 //! Currently, only 4-wire SPI over the SPIM1 peripheral is supported.
 
-use core::marker::PhantomData;
 use crate::{
-    hal::spi,
     drivers::max3263::gpio::*,
-    max32pac::{SPIM1, CLKMAN},
+    hal::spi,
+    max32pac::{CLKMAN, SPIM1},
 };
+use core::marker::PhantomData;
 
 /// A pin which may be used as an SPIM1 clock pin.
 pub unsafe trait ClkPin {}
@@ -39,12 +39,27 @@ pub struct Spi<CK: ClkPin, CS: CsPin, IO0: Io0Pin, IO1: Io1Pin> {
 pub enum Error {}
 
 impl<CK: ClkPin, CS: CsPin, IO0: Io0Pin, IO1: Io1Pin> Spi<CK, CS, IO0, IO1> {
-    pub fn new(spim: SPIM1, _clkman: &mut CLKMAN, clock: CK, chip_select: CS, mosi: IO0, miso: IO1) -> Self {
-        Self { spim, clock, chip_select, mosi, miso }
+    pub fn new(
+        spim: SPIM1,
+        _clkman: &mut CLKMAN,
+        clock: CK,
+        chip_select: CS,
+        mosi: IO0,
+        miso: IO1,
+    ) -> Self {
+        Self {
+            spim,
+            clock,
+            chip_select,
+            mosi,
+            miso,
+        }
     }
 }
 
-impl<CK: ClkPin, CS: CsPin, IO0: Io0Pin, IO1: Io1Pin> spi::FullDuplex<u8> for Spi<CK, CS, IO0, IO1> {
+impl<CK: ClkPin, CS: CsPin, IO0: Io0Pin, IO1: Io1Pin> spi::FullDuplex<u8>
+    for Spi<CK, CS, IO0, IO1>
+{
     type Error = Error;
 
     fn transmit(&mut self, _word: Option<u8>) -> nb::Result<(), Self::Error> {

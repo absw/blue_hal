@@ -1,4 +1,4 @@
-use crate::hal::{spi, flash::ReadWrite};
+use crate::hal::{flash::ReadWrite, spi};
 use core::ops::{Add, Sub};
 
 pub struct Is25Lp128F<SPI>
@@ -16,21 +16,29 @@ pub struct Address(pub u32);
 
 impl Add<usize> for Address {
     type Output = Self;
-    fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
+    fn add(self, rhs: usize) -> Address {
+        Address(self.0 + rhs as u32)
+    }
 }
 
 impl Sub<usize> for Address {
     type Output = Self;
-    fn sub(self, rhs: usize) -> Address { Address(self.0.saturating_sub(rhs as u32)) }
+    fn sub(self, rhs: usize) -> Address {
+        Address(self.0.saturating_sub(rhs as u32))
+    }
 }
 
 impl Sub<Address> for Address {
     type Output = usize;
-    fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
+    fn sub(self, rhs: Address) -> usize {
+        self.0.saturating_sub(rhs.0) as usize
+    }
 }
 
 impl Into<usize> for Address {
-    fn into(self) -> usize { self.0 as usize }
+    fn into(self) -> usize {
+        self.0 as usize
+    }
 }
 
 impl<SPI: spi::FullDuplex<u8>> Is25Lp128F<SPI> {

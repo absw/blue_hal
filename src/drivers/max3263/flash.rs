@@ -1,14 +1,14 @@
 //! Internal flash controller for MAX3263 family.
 
-use core::ops::{Add, Sub};
-use core::convert::TryInto;
 use crate::{
     hal::flash::ReadWrite,
     utilities::memory::{IterableByOverlaps, Region},
 };
+use core::convert::TryInto;
+use core::ops::{Add, Sub};
 
-const PAGE_SIZE : u32 = KB!(8);
-const PAGE_COUNT : u32 = 256;
+const PAGE_SIZE: u32 = KB!(8);
+const PAGE_COUNT: u32 = 256;
 
 pub struct Flash {
     flc: max3263x::FLC,
@@ -33,7 +33,9 @@ pub enum Error {
 pub struct Address(pub u32);
 
 impl Map {
-    pub fn pages() -> impl Iterator<Item = Page> { (0..PAGE_COUNT).map(Page) }
+    pub fn pages() -> impl Iterator<Item = Page> {
+        (0..PAGE_COUNT).map(Page)
+    }
 }
 
 impl Page {
@@ -57,32 +59,44 @@ impl Region<Address> for Page {
 
 impl Add<usize> for Address {
     type Output = Self;
-    fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
+    fn add(self, rhs: usize) -> Address {
+        Address(self.0 + rhs as u32)
+    }
 }
 
 impl Sub<usize> for Address {
     type Output = Self;
-    fn sub(self, rhs: usize) -> Address { Address(self.0.saturating_sub(rhs as u32)) }
+    fn sub(self, rhs: usize) -> Address {
+        Address(self.0.saturating_sub(rhs as u32))
+    }
 }
 
 impl Sub<Address> for Address {
     type Output = usize;
-    fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
+    fn sub(self, rhs: Address) -> usize {
+        self.0.saturating_sub(rhs.0) as usize
+    }
 }
 
 impl Into<usize> for Address {
-    fn into(self) -> usize { self.0 as usize }
+    fn into(self) -> usize {
+        self.0 as usize
+    }
 }
 
 impl Flash {
     pub fn new(flc: max3263x::FLC) -> Self {
         flc.perform.write(|w| {
-            w
-                .en_back2back_rds().set_bit()
-                .en_merge_grab_gnt().set_bit()
-                .auto_tacc().set_bit()
-                .auto_clkdiv().set_bit()
-                .en_prevent_fail().set_bit()
+            w.en_back2back_rds()
+                .set_bit()
+                .en_merge_grab_gnt()
+                .set_bit()
+                .auto_tacc()
+                .set_bit()
+                .auto_clkdiv()
+                .set_bit()
+                .en_prevent_fail()
+                .set_bit()
         });
 
         Self { flc }
@@ -101,18 +115,16 @@ impl Flash {
 
     /// Disable write and erase operations.
     fn lock_flash(&mut self) {
-        self.flc.ctrl.modify(|_, w| unsafe {
-            w
-                .flsh_unlock().bits(0b0000)
-                .erase_code().bits(0x00)
-        });
+        self.flc
+            .ctrl
+            .modify(|_, w| unsafe { w.flsh_unlock().bits(0b0000).erase_code().bits(0x00) });
     }
 
     /// Enable write and erase operations.
     fn unlock_flash(&mut self) {
-        self.flc.ctrl.modify(|_, w| unsafe {
-            w.flsh_unlock().bits(0b0010)
-        });
+        self.flc
+            .ctrl
+            .modify(|_, w| unsafe { w.flsh_unlock().bits(0b0010) });
     }
 
     fn erase_page(&mut self, page: Page) -> nb::Result<(), Error> {
@@ -123,17 +135,15 @@ impl Flash {
         self.clear_errors();
         self.unlock_flash();
 
-        self.flc.ctrl.modify(|_, w| unsafe {
-            w.erase_code().bits(0x55)
-        });
+        self.flc
+            .ctrl
+            .modify(|_, w| unsafe { w.erase_code().bits(0x55) });
 
-        self.flc.faddr.write(|w| unsafe {
-            w.faddr().bits(page.address().0)
-        });
+        self.flc
+            .faddr
+            .write(|w| unsafe { w.faddr().bits(page.address().0) });
 
-        self.flc.ctrl.modify(|_, w| {
-            w.page_erase().bit(true)
-        });
+        self.flc.ctrl.modify(|_, w| w.page_erase().bit(true));
 
         self.wait_until_not_busy();
         self.lock_flash();
@@ -171,7 +181,9 @@ impl Flash {
         self.unlock_flash();
 
         let addresses = (address.0..).step_by(4);
-        let words = bytes.chunks_exact(4).map(|b| u32::from_ne_bytes(b.try_into().unwrap()));
+        let words = bytes
+            .chunks_exact(4)
+            .map(|b| u32::from_ne_bytes(b.try_into().unwrap()));
 
         for (address, word) in addresses.zip(words) {
             self.flc.faddr.write(|w| unsafe { w.bits(address) });
@@ -194,11 +206,14 @@ impl ReadWrite for Flash {
     type Error = Error;
     type Address = Address;
 
-    fn label() -> &'static str { "MAX3263 flash (internal)" }
+    fn label() -> &'static str {
+        "MAX3263 flash (internal)"
+    }
 
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         let (minimum_address, maximum_address) = self.range();
-        let is_valid_address = (address >= minimum_address) && (address + bytes.len() <= maximum_address);
+        let is_valid_address =
+            (address >= minimum_address) && (address + bytes.len() <= maximum_address);
         if !is_valid_address {
             return Err(nb::Error::Other(Error::AddressOutOfRange));
         }
@@ -226,7 +241,8 @@ impl ReadWrite for Flash {
         }
 
         let (minimum_address, maximum_address) = self.range();
-        let is_valid_address = (address >= minimum_address) && (address + bytes.len() <= maximum_address);
+        let is_valid_address =
+            (address >= minimum_address) && (address + bytes.len() <= maximum_address);
         if !is_valid_address {
             return Err(nb::Error::Other(Error::AddressOutOfRange));
         }
@@ -260,10 +276,10 @@ impl ReadWrite for Flash {
         self.clear_errors();
         self.unlock_flash();
 
-        const MASS_ERASE_CODE : u8 = 0xAA;
-        self.flc.ctrl.modify(|_, w| unsafe {
-            w.erase_code().bits(MASS_ERASE_CODE)
-        });
+        const MASS_ERASE_CODE: u8 = 0xAA;
+        self.flc
+            .ctrl
+            .modify(|_, w| unsafe { w.erase_code().bits(MASS_ERASE_CODE) });
 
         self.flc.ctrl.modify(|_, w| w.mass_erase().set_bit());
 
